@@ -18,7 +18,7 @@ RUN python3 -m pip install conan==1.60.2 --break-system-packages
 RUN apt-get install --yes flex bison \
   && mkdir -p doxygen/build && cd doxygen \
   && wget -qO- https://github.com/doxygen/doxygen/releases/download/Release_1_10_0/doxygen-1.10.0.src.tar.gz | tar xvz --strip-components=1 \
-  && cd build && cmake -G "Ninja" .. && make -j$(nproc) && make install \
+  && cd build && cmake -G "Unix Makefiles" .. && make -j$(nproc) && make install \
   && apt-get purge -y bison flex && apt-get autoclean --yes \
   && cd ../.. && rm -rf doxygen
 
