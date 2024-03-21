@@ -1,0 +1,23 @@
+PROJECT_NAME = "Lightning++"
+PROJECT_NUMBER = "@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_CHANGE@"
+OUTPUT_DIRECTORY = @CMAKE_BINARY_DIR@/doc
+INPUT = @CMAKE_SOURCE_DIR@/src/include/cppconfig @CMAKE_SOURCE_DIR@/doc
+FILE_PATTERNS = *.h *.md
+GENERATE_TREEVIEW = YES
+DISABLE_INDEX = NO
+FULL_SIDEBAR = NO
+HTML_EXTRA_STYLESHEET = \
+  @CMAKE_SOURCE_DIR@/doc/doxygen-awesome-css/doxygen-awesome.css \
+  @CMAKE_SOURCE_DIR@/doc/doxygen-awesome-css/doxygen-awesome-sidebar-only.css \
+  @CMAKE_SOURCE_DIR@/doc/doxygen-awesome-css/doxygen-awesome-sidebar-only-darkmode-toggle.css
+HTML_EXTRA_FILES = @CMAKE_SOURCE_DIR@/doc/doxygen-awesome-css/doxygen-awesome-darkmode-toggle.js
+HTML_COLORSTYLE = LIGHT
+HTML_HEADER = @CMAKE_SOURCE_DIR@/doc/header.html
+HTML_DYNAMIC_SECTIONS = YES
+SHOW_USED_FILES = NO
+GENERATE_LATEX = NO
+SHOW_FILES = NO
+GENERATE_XML = NO
+HAVE_DOT = NO
+TAB_SIZE = 2
+USE_MDFILE_AS_MAINPAGE = @CMAKE_SOURCE_DIR@/doc/readme.md
