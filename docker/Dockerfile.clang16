@@ -1,0 +1,31 @@
+FROM ubuntu:23.10
+
+ARG DOCKER_USER=dev
+
+COPY docker/bashrc /etc/bash.bashrc
+COPY docker/update-alternatives-clang.sh /tmp
+RUN chmod a+rwx /etc/bash.bashrc
+
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+  lsb-release wget software-properties-common gnupg \
+  build-essential make ninja-build ccache cmake python3 python3-pip lcov sudo git
+RUN wget -O - https://apt.llvm.org/llvm.sh | bash -s 16 all \
+  && /tmp/update-alternatives-clang.sh 16 100
+
+RUN update-alternatives --remove-all cc \
+  && update-alternatives --remove-all c++ \
+  && update-alternatives --install /usr/bin/cc cc /usr/bin/clang 10 \
+  && update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++ 10
+
+RUN python3 -m pip install conan==1.60.2 --break-system-packages
+
+RUN apt-get install --yes flex bison \
+  && mkdir -p doxygen/build && cd doxygen \
+  && wget -qO- https://github.com/doxygen/doxygen/releases/download/Release_1_9_8/doxygen-1.9.8.src.tar.gz | tar xvz --strip-components=1 \
+  && cd build && cmake -G "Unix Makefiles" .. && make -j$(nproc) && make install \
+  && apt-get purge -y bison flex && apt-get autoclean --yes \
+  && cd ../.. && rm -rf doxygen
+
+RUN useradd --create-home --shell /bin/bash --groups sudo $DOCKER_USER
+
+USER $DOCKER_USER
