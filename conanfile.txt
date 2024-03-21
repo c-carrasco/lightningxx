@@ -1,0 +1,6 @@
+[requires]
+gtest/1.14.0
+asio/1.29.0
+
+[generators]
+cmake_find_package

@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build Debug GCC 13 C++20
+        run: ./build.sh docker=gcc13 debug clean uban=on asan=on test
+      - name: Build Release GCC 13 C++20
+        run: ./build.sh docker=gcc13 release clean test doc
+
+      - name: Build Debug Clang 16 C++20
+        run: ./build.sh docker=clang16 debug clean uban=on asan=on test
+        env: # https://github.com/google/googletest/issues/4097
+          ASAN_OPTIONS: alloc_dealloc_mismatch=0
+      - name: Build Release Clang 16 C++20
+        run: ./build.sh docker=clang16 release clean test doc
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          folder: build/release/doc/html
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Conan 1.x
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.62.0
+
+      - name: Build Debug AppleClang C++20
+        run: ./build.sh debug clean uban=on asan=on test
+      - name: Build Release AppleClang C++20
+        run: ./build.sh release clean test

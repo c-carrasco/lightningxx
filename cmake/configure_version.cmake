@@ -1,0 +1,18 @@
+file (READ ${CMAKE_CURRENT_SOURCE_DIR}/version.json VERSION_JSON_STRING)
+
+string (JSON VERSION_MAJOR GET ${VERSION_JSON_STRING} major)
+string (JSON VERSION_MINOR GET ${VERSION_JSON_STRING} minor)
+
+execute_process (
+  COMMAND git config --global --add safe.directory ${CMAKE_CURRENT_SOURCE_DIR}
+)
+execute_process (
+  COMMAND git rev-parse --short HEAD OUTPUT_VARIABLE VERSION_CHANGE
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  RESULT_VARIABLE EXIT_CODE
+)
+if (${EXIT_CODE} EQUAL 0)
+  string (STRIP ${VERSION_CHANGE} VERSION_CHANGE)
+else()
+  set (VERSION_CHANGE "0")
+endif()
