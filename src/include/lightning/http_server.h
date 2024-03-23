@@ -5,10 +5,7 @@
 // ----------------------------------------------------------------------------
 #ifndef __LIGHTNING_HTTP_SERVER_H__
 #define __LIGHTNING_HTTP_SERVER_H__
-#include <cassert>
-#include <cstddef>
 #include <functional>
-#include <list>
 #include <string_view>
 #include <thread>
 #include <vector>
@@ -22,22 +19,18 @@
 
 namespace lightning {
 
-using RequestHandler = std::function<void (HttpRequest &, HttpResponse &)>;
+using RequestHandler = std::function<void (const HttpRequest &, HttpResponse &)>;
 
-
-// ----------------------------------------------------------------------------
-// HttpServer Class
-// ----------------------------------------------------------------------------
 class HttpServer {
   public:
-    HttpServer (std::size_t asioPoolSize);
+    HttpServer (size_t poolSize = 1);
     ~HttpServer();
 
     void addRoute (HttpMethod method, std::string_view path, RequestHandler &&handler);
     void setDefault (RequestHandler &&handler) { _routeNotFound = handler; }
 
   private:
-    using Route = struct {
+    struct Route {
       std::string_view path;
       RequestHandler handler;
     };
@@ -47,11 +40,11 @@ class HttpServer {
     asio::ip::tcp::socket _socket { _ioService };
 
     std::vector<std::thread> _asioPool;
-    std::vector<std::vector<Route>> _routes { static_cast<size_t>(HttpMethod::kPatch) + 1, std::vector<Route>() }; // TODO
+    std::array<std::vector<Route>, kNumHttpMethods> _routes {};
     RequestHandler _routeNotFound = nullptr;
 
     void _acceptNext();
-    bool _find (HttpRequest &, RequestHandler &);
+    std::optional<RequestHandler> _find (const HttpRequest &) const;
 };
 
 }

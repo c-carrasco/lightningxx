@@ -11,17 +11,18 @@
 namespace lightning {
 
 enum class HttpMethod: int_fast8_t {
-  kUnknown = 0,
-  kGet = 1,
-  kHead = 2,
-  kPost = 3,
-  kPut = 4,
-  kDelete = 5,
-  kConnect = 6,
-  kOptions = 7,
-  kTrace = 8,
-  kPatch = 9
+  kGet = 0,
+  kHead = 1,
+  kPost = 2,
+  kPut = 3,
+  kDelete = 4,
+  kConnect = 5,
+  kOptions = 6,
+  kTrace = 7,
+  kPatch = 8
 };
+
+constexpr int_fast8_t kNumHttpMethods { static_cast<int_fast8_t> (HttpMethod::kPatch) + 1 };
 
 }
 

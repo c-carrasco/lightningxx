@@ -12,7 +12,7 @@ namespace lightning {
 // ----------------------------------------------------------------------------
 // Constructor
 // ----------------------------------------------------------------------------
-HttpServer::HttpServer (std::size_t asioPoolSize){
+HttpServer::HttpServer (std::size_t poolSize){
   asio::ip::tcp::endpoint ep { asio::ip::tcp::v4(), 8080 };
 
   ep.address (asio::ip::address::from_string ("127.0.0.1"));
@@ -26,8 +26,8 @@ HttpServer::HttpServer (std::size_t asioPoolSize){
 
   _acceptNext();
 
-  _asioPool.reserve (asioPoolSize);
-  for (std::size_t i = 0; i < asioPoolSize; ++i)
+  _asioPool.reserve (poolSize);
+  for (std::size_t i = 0; i < poolSize; ++i)
     _asioPool.emplace_back ([ & ] { _ioService.run(); });
 }
 
@@ -37,7 +37,7 @@ HttpServer::HttpServer (std::size_t asioPoolSize){
 HttpServer::~HttpServer () {
   _ioService.post ([ & ] { _acceptor.close(); });
 
-  for (auto &t : _asioPool)
+  for (auto &t: _asioPool)
     t.join();
 }
 
@@ -63,21 +63,23 @@ void HttpServer::_acceptNext () {
     [ this ] (auto ec) {
       if (_acceptor.is_open()) {
         if (!ec) {
-          auto conn = std::make_shared<HttpConnection> (std::move (_socket), [ this ] (HttpRequest &request, HttpResponse &response) {
-            RequestHandler handler;
-            if (_find (request, handler)) {
-              handler (request, response);
-            }
-            else {
-              if (_routeNotFound == nullptr) {
-                response.headers().set ("Content-Type", "text/plain; charset=utf-8");
-                response.status (404).send ("Not found");
+          const auto conn = std::make_shared<HttpConnection> (
+            std::move (_socket),
+            [ this ] (const HttpRequest &request, HttpResponse &response) {
+              if (const auto handler = _find (request); handler.has_value()) {
+                handler.value() (request, response);
               }
               else {
-                _routeNotFound (request, response);
+                if (_routeNotFound == nullptr) {
+                  response.headers().set ("Content-Type", "text/plain; charset=utf-8");
+                  response.status (404).send ("Not found");
+                }
+                else {
+                  _routeNotFound (request, response);
+                }
               }
             }
-          });
+          );
 
           if (conn)
             conn->waitForHttpMessage();
@@ -92,24 +94,19 @@ void HttpServer::_acceptNext () {
 // ----------------------------------------------------------------------------
 // HttpServer::_find
 // ----------------------------------------------------------------------------
-bool HttpServer::_find (HttpRequest &request, RequestHandler &handler) {
+std::optional<RequestHandler> HttpServer::_find (const HttpRequest &request) const {
   const auto index { static_cast<decltype(_routes)::size_type> (request.method) };
   assert ((index >= 0));
 
-  // if (index >= kHttpMethodNumItems) {
-  //   // TODO: not supported
-  // }
-
-  const auto it = std::find_if (_routes[index].begin(), _routes[index].end(), [ & ] (const Route &r) {
+  // FIXME: replace vector by unordered_map
+  const auto it = std::find_if (_routes[index].begin(), _routes[index].end(), [ &request ] (const Route &r) {
     return request.path.compare (r.path.data()) == 0;
   });
 
   if (it == _routes[index].end())
-    return false;
+    return std::nullopt;
 
-  handler = it->handler;
-
-  return true;
+  return { it->handler };
 }
 
 }
