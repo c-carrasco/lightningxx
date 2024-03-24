@@ -3,6 +3,8 @@
 //
 // Copyright (c) 2024 Carlos Carrasco
 // ----------------------------------------------------------------------------
+#include <iostream>
+
 #include <lightning/http_connection.h>
 #include <lightning/http_server.h>
 
@@ -12,8 +14,10 @@ namespace lightning {
 // ----------------------------------------------------------------------------
 // Constructor
 // ----------------------------------------------------------------------------
-HttpServer::HttpServer (std::size_t poolSize){
-  asio::ip::tcp::endpoint ep { asio::ip::tcp::v4(), 8080 };
+HttpServer::HttpServer (uint16_t port, std::size_t poolSize){
+  _logger.transport (cxxlog::transport::OutputStream { std::cout });
+
+  asio::ip::tcp::endpoint ep { asio::ip::tcp::v4(), port };
 
   ep.address (asio::ip::address::from_string ("127.0.0.1"));
 
@@ -29,6 +33,8 @@ HttpServer::HttpServer (std::size_t poolSize){
   _asioPool.reserve (poolSize);
   for (std::size_t i = 0; i < poolSize; ++i)
     _asioPool.emplace_back ([ & ] { _ioService.run(); });
+
+  _logger.info ("Listening, port={}", port);
 }
 
 // ----------------------------------------------------------------------------
@@ -45,8 +51,6 @@ HttpServer::~HttpServer () {
 // HttpServer:addRoute
 // ----------------------------------------------------------------------------
 void HttpServer::addRoute (HttpMethod method, std::string_view path, RequestHandler &&handler) {
-  // uint32_t index = static_cast<uint32_t> (method);
-  // assert ((index >= 0) && (index < kHttpMethodNumItems));
   const auto index { static_cast<decltype(_routes)::size_type> (method) };
 
   _routes[index].push_back (Route { path, handler });
@@ -60,12 +64,17 @@ void HttpServer::addRoute (HttpMethod method, std::string_view path, RequestHand
 void HttpServer::_acceptNext () {
   _acceptor.async_accept (
     _socket,
-    [ this ] (auto ec) {
+    [ this ] (const auto errCode) {
+      _logger.debug ("accepting {} ...", errCode.value());
+
       if (_acceptor.is_open()) {
-        if (!ec) {
-          const auto conn = std::make_shared<HttpConnection> (
+        if (!errCode) {
+          _logger.debug ("creating connection ...");
+
+          const auto connection = std::make_shared<HttpConnection> (
             std::move (_socket),
             [ this ] (const HttpRequest &request, HttpResponse &response) {
+              _logger.debug ("handling connection ...");
               if (const auto handler = _find (request); handler.has_value()) {
                 handler.value() (request, response);
               }
@@ -81,8 +90,8 @@ void HttpServer::_acceptNext () {
             }
           );
 
-          if (conn)
-            conn->waitForHttpMessage();
+          if (connection)
+            connection->waitForHttpMessage();
         }
 
         this->_acceptNext();
@@ -97,6 +106,8 @@ void HttpServer::_acceptNext () {
 std::optional<RequestHandler> HttpServer::_find (const HttpRequest &request) const {
   const auto index { static_cast<decltype(_routes)::size_type> (request.method) };
   assert ((index >= 0));
+
+  _logger.debug ("finding {} ...", request.path);
 
   // FIXME: replace vector by unordered_map
   const auto it = std::find_if (_routes[index].begin(), _routes[index].end(), [ &request ] (const Route &r) {

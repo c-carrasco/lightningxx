@@ -12,6 +12,9 @@
 
 #include <asio.hpp>
 
+#include <cxxlog/logger.h>
+#include <cxxlog/transport.h>
+
 #include <lightning/http_method.h>
 #include <lightning/http_request.h>
 #include <lightning/http_response.h>
@@ -23,7 +26,7 @@ using RequestHandler = std::function<void (const HttpRequest &, HttpResponse &)>
 
 class HttpServer {
   public:
-    HttpServer (size_t poolSize = 1);
+    HttpServer (uint16_t port=8080, size_t poolSize = 1);
     ~HttpServer();
 
     void addRoute (HttpMethod method, std::string_view path, RequestHandler &&handler);
@@ -34,6 +37,8 @@ class HttpServer {
       std::string_view path;
       RequestHandler handler;
     };
+
+    cxxlog::Logger<cxxlog::transport::OutputStream> _logger { cxxlog::Severity::kVerbose };
 
     asio::io_service _ioService;
     asio::ip::tcp::acceptor _acceptor { _ioService };

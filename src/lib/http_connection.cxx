@@ -107,21 +107,21 @@ void HttpConnection::_parseResponse (HttpRequest &request) {
 // ----------------------------------------------------------------------------
 void HttpConnection::_writeResponseMessage (HttpResponse &response) {
   std::ignore = response;
-  // std::string data = response.data();
+  std::string data = response.data();
 
-  // asio::async_write(
-  //   _socket,
-  //   asio::buffer (data.data(), data.size()),
-  //   [ this, ctx = shared_from_this() ] (auto & ec, std::size_t) {
-  //     if (ec) {
-  //       if (ec != asio::error::operation_aborted)
-  //         _socket.close();
-  //     }
-  //     else {
-  //       ctx->waitForHttpMessage();
-  //     }
-  //   }
-  // );
+  asio::async_write(
+    _socket,
+    asio::buffer (data.data(), data.size()),
+    [ this, ctx = shared_from_this() ] (std::error_code ec, std::size_t) {
+      if (ec) {
+        if (ec != asio::error::operation_aborted)
+          _socket.close();
+      }
+      else {
+        ctx->waitForHttpMessage();
+      }
+    }
+  );
 }
 
 }

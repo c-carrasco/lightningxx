@@ -21,6 +21,7 @@ set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type options are: Debug, Rel
 list (APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 find_package (asio REQUIRED)
+find_package (http_parser REQUIRED) # FIXME: migrate to llhttp
 find_package (GTest REQUIRED)
 
 find_program (CCACHE_PROGRAM ccache)
@@ -44,5 +45,13 @@ else()
     COMMAND ln -s ${CMAKE_CURRENT_SOURCE_DIR}/data ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data
   )
 endif()
+
+include(FetchContent)
+FetchContent_Declare(
+    CxxLogger
+    GIT_REPOSITORY git@github.com:c-carrasco/cxxlogger.git
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(CxxLogger)
 
 add_subdirectory (src)

@@ -52,10 +52,11 @@ class HttpRequest {
 
     bool parse (const char *data, size_t len);
 
-//    void use (ParseHandler &&handler) { _parsers.push_back (handler); }
-//
-//    static void queryParser (HttpRequest &req);
-//    static void bodyParser (HttpRequest &req);
+    void use (ParseHandler &&handler) { _parsers.push_back (handler); }
+
+    static void queryParser (HttpRequest &req);
+    static void bodyParser (HttpRequest &req);
+
   private:
     std::vector<ParseHandler> _parsers;
 };

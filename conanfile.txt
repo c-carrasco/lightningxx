@@ -1,6 +1,7 @@
 [requires]
 gtest/1.14.0
 asio/1.29.0
+http_parser/2.9.4
 
 [generators]
 cmake_find_package

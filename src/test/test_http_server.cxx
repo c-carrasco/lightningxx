@@ -9,12 +9,12 @@
 
 
 // ----------------------------------------------------------------------------
-// test_format
+// test
 // ----------------------------------------------------------------------------
-TEST (Logger, test_format) {
+TEST (HttpServer, test) {
   lightning::HttpServer server {};
 
-  server.addRoute (lightning::HttpMethod::kGet, "/hello", [] (const auto &request, auto &response) {
+  server.addRoute (lightning::HttpMethod::kGet, "/hello", [] ([[maybe_unused]] const auto &request, auto &response) {
     response.status(200).send ("Hello World!");
   });
 }
