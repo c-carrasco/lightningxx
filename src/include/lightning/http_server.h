@@ -12,9 +12,7 @@
 
 #include <asio.hpp>
 
-#include <cxxlog/logger.h>
-#include <cxxlog/transport.h>
-
+#include <lightning/types.h>
 #include <lightning/http_method.h>
 #include <lightning/http_request.h>
 #include <lightning/http_response.h>
@@ -38,7 +36,7 @@ class HttpServer {
       RequestHandler handler;
     };
 
-    cxxlog::Logger<cxxlog::transport::OutputStream> _logger { cxxlog::Severity::kVerbose };
+    Logger _logger { cxxlog::Severity::kVerbose };
 
     asio::io_service _ioService;
     asio::ip::tcp::acceptor _acceptor { _ioService };

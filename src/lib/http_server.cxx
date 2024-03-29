@@ -43,8 +43,9 @@ HttpServer::HttpServer (uint16_t port, std::size_t poolSize){
 HttpServer::~HttpServer () {
   _ioService.post ([ & ] { _acceptor.close(); });
 
-  for (auto &t: _asioPool)
+  for (auto &t: _asioPool) {
     t.join();
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -87,7 +88,8 @@ void HttpServer::_acceptNext () {
                   _routeNotFound (request, response);
                 }
               }
-            }
+            },
+            _logger
           );
 
           if (connection)
@@ -107,7 +109,7 @@ std::optional<RequestHandler> HttpServer::_find (const HttpRequest &request) con
   const auto index { static_cast<decltype(_routes)::size_type> (request.method) };
   assert ((index >= 0));
 
-  _logger.debug ("finding {} ...", request.path);
+  _logger.debug ("searching {} ...", request.path);
 
   // FIXME: replace vector by unordered_map
   const auto it = std::find_if (_routes[index].begin(), _routes[index].end(), [ &request ] (const Route &r) {

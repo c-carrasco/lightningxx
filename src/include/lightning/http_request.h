@@ -40,7 +40,7 @@ class HttpRequest {
 //    std::string host; // from headers (host)
 //    uint16_t port; // from headers (host)
     std::string ip;
-    ProtocolType protocol;
+    ProtocolType protocol { ProtocolType::kUnknown };
     HttpHeader headers;
     struct {
       std::map<std::string, std::string> path;
@@ -50,7 +50,8 @@ class HttpRequest {
     int32_t statusCode;
     std::vector<const uint8_t *> body;
 
-    bool parse (const char *data, size_t len);
+    // bool parse (const char *data, size_t len);
+    bool parse (std::string_view data);
 
     void use (ParseHandler &&handler) { _parsers.push_back (handler); }
 

@@ -26,9 +26,10 @@ using ParserData = struct {
 // ----------------------------------------------------------------------------
 // HttpRequest::parse
 // ----------------------------------------------------------------------------
-bool HttpRequest::parse (const char *buffer, size_t bufLen) {
-  std::ignore = buffer;
-  std::ignore = bufLen;
+// bool HttpRequest::parse (const char *buffer, size_t bufLen) {
+bool HttpRequest::parse (std::string_view buffer) {
+  // std::ignore = buffer;
+  // std::ignore = bufLen;
   http_parser_settings settings;
   http_parser *parser = new http_parser;
   ParserData data { this, nullptr, 0 };
@@ -36,7 +37,7 @@ bool HttpRequest::parse (const char *buffer, size_t bufLen) {
   http_parser_init (parser, HTTP_REQUEST);
   parser->data = static_cast<void *> (&data);
 
-  settings.on_message_begin = [] (http_parser *parser) -> int {
+  settings.on_message_begin = [] ([[maybe_unused]] http_parser *parser) -> int {
     return 0;
   };
   settings.on_url = [] (http_parser *parser, const char *at, size_t length) -> int {
@@ -56,7 +57,7 @@ bool HttpRequest::parse (const char *buffer, size_t bufLen) {
 
     return 0;
   };
-  settings.on_status = [] (http_parser *parser, const char *at, size_t length) -> int {
+  settings.on_status = [] ([[maybe_unused]] http_parser *parser, [[maybe_unused]] const char *at, [[maybe_unused]] size_t length) -> int {
     return 0;
   };
   settings.on_header_field = [] (http_parser *parser, const char *at, size_t length) -> int {
@@ -87,7 +88,7 @@ bool HttpRequest::parse (const char *buffer, size_t bufLen) {
 
     return 0;
   };
-  settings.on_headers_complete = [] (http_parser *parser) -> int {
+  settings.on_headers_complete = [] ([[maybe_unused]] http_parser *parser) -> int {
     return 0;
   };
   settings.on_body = [] (http_parser *parser, const char *at, size_t length) -> int {
@@ -134,14 +135,15 @@ bool HttpRequest::parse (const char *buffer, size_t bufLen) {
 
     return 0;
   };
-  settings.on_chunk_header = [] (http_parser *parser) -> int {
+  settings.on_chunk_header = [] ([[maybe_unused]] http_parser *parser) -> int {
     return 0;
   };
-  settings.on_chunk_complete = [] (http_parser *parser) -> int {
+  settings.on_chunk_complete = [] ([[maybe_unused]] http_parser *parser) -> int {
     return 0;
   };
 
-  http_parser_execute (parser, &settings, buffer, bufLen);
+  // http_parser_execute (parser, &settings, buffer, bufLen);
+  http_parser_execute (parser, &settings, buffer.data(), buffer.size());
 
 //  for (auto &funct: _parsers)
 //    funct (*this);

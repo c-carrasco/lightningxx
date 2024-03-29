@@ -15,8 +15,8 @@ namespace lightning {
 // HttpResponse::send
 // ----------------------------------------------------------------------------
 HttpResponse & HttpResponse::send (const std::string &data) {
-  if (!_headers.has ("Content-Type"))
-    _headers.set ("Content-Type", "text/plain; charset=utf-8");
+  if (!_headers.has ("content-type"))
+    _headers.set ("content-type", "text/plain; charset=utf-8");
 
   _data = data;
 
@@ -41,27 +41,27 @@ HttpResponse & HttpResponse::send (const std::string &data) {
 // ----------------------------------------------------------------------------
 // HttpResponse::data
 // ----------------------------------------------------------------------------
-std::string HttpResponse::data() {
+std::string HttpResponse::data() const {
   std::string res;
 
   res.append ("HTTP/1.1 ");
   res.append (std::to_string (_status));
-  res.append ("\r\n");
+  res.append (" \r\n");
 
-  for (auto it = _headers.begin(); it != _headers.end(); it++) {
+  for (auto it = _headers.cbegin(); it != _headers.cend(); it++) {
     res.append (it->second.name);
     res.append (": ");
     res.append (it->second.value);
     res.append ("\r\n");
   }
 
-  if (!_headers.has ("Content-Length")) {
-    res.append ("Content-Length: ");
+  if (!_headers.has ("content-length")) {
+    res.append ("content-length: ");
     res.append (std::to_string (_data.size()));
     res.append ("\r\n");
   }
 
-  res.append ("Server: ligthning");
+  res.append ("server: lightning");
   res.append ("\r\n");
   res.append ("\r\n");
   res.append (_data);

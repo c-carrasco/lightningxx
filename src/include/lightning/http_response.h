@@ -15,7 +15,7 @@ namespace lightning {
 
 class HttpResponse {
   public:
-    std::string data();
+    std::string data() const;
 
     HttpResponse & status (uint32_t status) {
       _status = status;

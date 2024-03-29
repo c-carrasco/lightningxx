@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <iterator>
 #include <string>
-#include <iostream>
 
 #include <asio.hpp>
 
@@ -77,7 +76,7 @@ void HttpConnection::_consumeData (const char *data, std::size_t length) {
 
     _inputBuffer.consumedBytes (d - data + 4);
 
-    _parseResponse (request);
+    request.parse (_inputBuffer.str());
 
     request.ip = _socket.remote_endpoint().address().to_string();
     request.protocol = ProtocolType::kHttp; // FIXME: support more protocols
@@ -93,21 +92,12 @@ void HttpConnection::_consumeData (const char *data, std::size_t length) {
 }
 
 // ----------------------------------------------------------------------------
-// HttpConnection::_parseResponse
-// ----------------------------------------------------------------------------
-void HttpConnection::_parseResponse (HttpRequest &request) {
-  const char *buf = _inputBuffer.bytes();
-  size_t s = strlen (buf);
-
-  request.parse (buf, s);
-}
-
-// ----------------------------------------------------------------------------
 // HttpConnection::_writeResponseMessage
 // ----------------------------------------------------------------------------
-void HttpConnection::_writeResponseMessage (HttpResponse &response) {
-  std::ignore = response;
-  std::string data = response.data();
+void HttpConnection::_writeResponseMessage (const HttpResponse &response) {
+  const std::string data { response.data() };
+
+  _logger.get().verbose ("sending response ...\n{}", data);
 
   asio::async_write(
     _socket,
