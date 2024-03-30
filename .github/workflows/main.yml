@@ -21,10 +21,10 @@ jobs:
       - name: Build Release GCC 13 C++20
         run: ./build.sh docker=gcc13 release clean test doc
 
-      - name: Build Debug Clang 16 C++20
-        run: ./build.sh docker=clang16 debug clean uban=on asan=on test
-      - name: Build Release Clang 16 C++20
-        run: ./build.sh docker=clang16 release clean test doc
+      - name: Build Debug Clang 17 C++20
+        run: ./build.sh docker=clang17 debug clean uban=on asan=on test
+      - name: Build Release Clang 17 C++20
+        run: ./build.sh docker=clang17 release clean test doc
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
@@ -42,7 +42,7 @@ jobs:
       - name: Install Conan 1.x
         uses: turtlebrowser/get-conan@main
         with:
-          version: 1.62.0
+          version: 1.63.0
 
       - name: Build Debug AppleClang C++20
         run: ./build.sh debug clean uban=on asan=on test

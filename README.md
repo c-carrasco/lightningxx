@@ -31,7 +31,7 @@ Before diving into `Lightning++`, make sure you have the following tools and dep
 
 - Conan 1.x
 - CMake 3.20 or higer
-- GCC +13, Clang +16 or AppleClang +15
+- GCC +13, Clang +17 or AppleClang +15
 - GNU Make or ninja
 - Docker (optional)
 - Doxygen (for generating documentation)
@@ -68,7 +68,7 @@ Enable the [Undefined Behavior Sanitizer]
 Use docker for local development.
   Available options:
     - `gcc13`: Use GCC 13 as default compiler (selected if no compiler is specified).
-    - `clang16`: Use Clang 16 as default compiler.
+    - `clang17`: Use Clang 17 as default compiler.
 
 Examples:
 
@@ -76,8 +76,8 @@ Examples:
 # Compile code in release mode
 ./build.sh clean release
 
-# Build code in debug mode using Docker image with Clang 16, Address Sanitizer enabled, and run unit tests
-./build.sh docker=clang16 debug test asan=on
+# Build code in debug mode using Docker image with Clang 17, Address Sanitizer enabled, and run unit tests
+./build.sh docker=clang17 debug test asan=on
 
 # Start docker dev environment with gcc13
 ./build.sh docker=gcc13

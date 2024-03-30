@@ -47,6 +47,9 @@ else()
 endif()
 
 include(FetchContent)
+
+set (CXXLOG_BUILD_TESTS OFF CACHE INTERNAL "")
+set (CXXLOG_DOCUMENTATION OFF CACHE INTERNAL "")
 FetchContent_Declare(
     CxxLogger
     GIT_REPOSITORY https://github.com/c-carrasco/cxxlogger.git
