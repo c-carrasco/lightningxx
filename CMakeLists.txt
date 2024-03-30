@@ -49,7 +49,7 @@ endif()
 include(FetchContent)
 FetchContent_Declare(
     CxxLogger
-    GIT_REPOSITORY git@github.com:c-carrasco/cxxlogger.git
+    GIT_REPOSITORY https://github.com/c-carrasco/cxxlogger.git
     GIT_TAG main
 )
 FetchContent_MakeAvailable(CxxLogger)
