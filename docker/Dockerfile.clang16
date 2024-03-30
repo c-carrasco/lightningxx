@@ -8,7 +8,8 @@ RUN chmod a+rwx /etc/bash.bashrc
 
 RUN apt-get update && apt-get install --yes --no-install-recommends \
   lsb-release wget software-properties-common gnupg \
-  build-essential make ninja-build ccache cmake python3 python3-pip lcov sudo git
+  build-essential make ninja-build ccache cmake python3 python3-pip lcov sudo git \
+  openssl
 RUN wget -O - https://apt.llvm.org/llvm.sh | bash -s 16 all \
   && /tmp/update-alternatives-clang.sh 16 100
 

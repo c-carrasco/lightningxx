@@ -7,7 +7,8 @@ RUN chmod a+rwx /etc/bash.bashrc
 
 RUN apt-get update && apt-get install --yes --no-install-recommends \
   lsb-release wget software-properties-common gnupg \
-  build-essential gcc-13 g++-13 cpp-13 make ninja-build ccache cmake python3 python3-pip lcov sudo git gdb
+  build-essential gcc-13 g++-13 cpp-13 make ninja-build ccache cmake python3 python3-pip lcov sudo git gdb \
+  openssl
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100 \
   && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 \
   && update-alternatives --install /usr/bin/gcc-ar gcc-ar /usr/bin/gcc-ar-13 100 \
