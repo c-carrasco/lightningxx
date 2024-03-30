@@ -24,11 +24,20 @@ using RequestHandler = std::function<void (const HttpRequest &, HttpResponse &)>
 
 class HttpServer {
   public:
-    HttpServer (uint16_t port=8080, size_t poolSize = 1);
+    HttpServer (uint16_t port, size_t poolSize, LogLevel logLevel);
+
+    inline HttpServer (uint16_t port = 8080, LogLevel logLevel = LogLevel::kInfo): HttpServer { port, 1, logLevel } {
+      // empty
+    }
+
     ~HttpServer();
 
     void addRoute (HttpMethod method, std::string_view path, RequestHandler &&handler);
     void setDefault (RequestHandler &&handler) { _routeNotFound = handler; }
+
+    inline void setLogLevel (LogLevel level) {
+      _logger.setLevel (level);
+    }
 
   private:
     struct Route {
@@ -36,7 +45,7 @@ class HttpServer {
       RequestHandler handler;
     };
 
-    Logger _logger { cxxlog::Severity::kVerbose };
+    Logger _logger;
 
     asio::io_service _ioService;
     asio::ip::tcp::acceptor _acceptor { _ioService };

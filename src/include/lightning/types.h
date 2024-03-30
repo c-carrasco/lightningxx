@@ -13,6 +13,8 @@ namespace lightning {
 
 using Logger = cxxlog::Logger<cxxlog::transport::OutputStream>;
 
+using LogLevel = cxxlog::Severity;
+
 }
 
 #endif

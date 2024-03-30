@@ -15,7 +15,7 @@ namespace lightning {
 // HttpResponse::send
 // ----------------------------------------------------------------------------
 HttpResponse & HttpResponse::send (const std::string &data) {
-  if (!_headers.has ("content-type"))
+  if (!_headers.contains ("content-type"))
     _headers.set ("content-type", "text/plain; charset=utf-8");
 
   _data = data;
@@ -55,7 +55,7 @@ std::string HttpResponse::data() const {
     res.append ("\r\n");
   }
 
-  if (!_headers.has ("content-length")) {
+  if (!_headers.contains ("content-length")) {
     res.append ("content-length: ");
     res.append (std::to_string (_data.size()));
     res.append ("\r\n");

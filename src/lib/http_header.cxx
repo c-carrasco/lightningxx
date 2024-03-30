@@ -9,9 +9,9 @@
 namespace lightning {
 
 // ----------------------------------------------------------------------------
-// HttpHeaders::has
+// HttpHeaders::contains
 // ----------------------------------------------------------------------------
-bool HttpHeader::has (std::string_view name) const {
+bool HttpHeader::contains (std::string_view name) const {
   std::string lower;
   lower.resize(name.size());
   std::transform (std::begin (name), std::end (name), std::begin(lower), [] (unsigned char c) {
@@ -24,7 +24,7 @@ bool HttpHeader::has (std::string_view name) const {
 // ----------------------------------------------------------------------------
 // HttpHeader::get
 // ----------------------------------------------------------------------------
-std::string_view HttpHeader::get (std::string_view name, std::string_view defaultValue) {
+std::optional<std::string_view> HttpHeader::get (std::string_view name) const {
   std::string lower;
   lower.resize(name.size());
   std::transform (std::begin (name), std::end (name), std::begin(lower), [] (unsigned char c) {
@@ -32,9 +32,9 @@ std::string_view HttpHeader::get (std::string_view name, std::string_view defaul
   });
 
   if (auto it = _headers.find (lower); it != _headers.end())
-    return it->second.value;
+    return { it->second.value };
 
-  return defaultValue;
+  return std::nullopt;
 }
 
 // ----------------------------------------------------------------------------
@@ -47,21 +47,7 @@ void HttpHeader::set (std::string_view name, std::string_view value) {
     return std::tolower (c);
   });
 
-  _headers.insert (std::make_pair (std::move(lower), HeaderData { name, value }));
-}
-
-// ----------------------------------------------------------------------------
-// HttpHeader::size
-// ----------------------------------------------------------------------------
-size_t HttpHeader::size () {
-  return _headers.size();
-}
-
-// ----------------------------------------------------------------------------
-// HttpHeader::operator[]
-// ----------------------------------------------------------------------------
-std::string_view HttpHeader::operator[] (std::string_view name) {
-  return get (name);
+  _headers.insert (std::make_pair (std::move (lower), HeaderData { std::move (name), std::move (value) }));
 }
 
 }

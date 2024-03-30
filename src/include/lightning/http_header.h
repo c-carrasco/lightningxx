@@ -5,9 +5,10 @@
 // ----------------------------------------------------------------------------
 #ifndef __LIGHTNING_HTTP_HEADER_H__
 #define __LIGHTNING_HTTP_HEADER_H__
+#include <map>
+#include <optional>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 
 
 namespace lightning {
@@ -22,34 +23,25 @@ class HttpHeader {
       std::string_view value;
     };
 
-    using iterator = std::unordered_map<std::string, HeaderData>::iterator;
-    using const_iterator = std::unordered_map<std::string, HeaderData>::const_iterator;
+    using iterator = std::map<std::string, HeaderData>::iterator;
+    using const_iterator = std::map<std::string, HeaderData>::const_iterator;
 
-    bool has (std::string_view name) const;
-    std::string_view get (std::string_view name, std::string_view defaultValue="");
+    bool contains (std::string_view name) const;
+
+    std::optional<std::string_view> get (std::string_view name) const;
+
     void set (std::string_view name, std::string_view value);
 
-    size_t size();
+    inline size_t size() const { return _headers.size(); }
 
-    std::string_view operator[] (std::string_view name);
+    inline iterator begin () { return _headers.begin(); }
+    inline iterator end () { return _headers.end(); }
 
-    iterator begin () { return _headers.begin(); }
-    iterator end () { return _headers.end(); }
-
-    const_iterator cbegin () const { return _headers.begin(); }
-    const_iterator cend () const { return _headers.end(); }
+    inline const_iterator cbegin () const { return _headers.begin(); }
+    inline const_iterator cend () const { return _headers.end(); }
 
   private:
-    // struct StringHash {
-    //   using hash_type = std::hash<std::string_view>;
-    //   using is_transparent = void;
-
-    //   std::size_t operator() (const char *str) const        { return hash_type{} (str); }
-    //   std::size_t operator() (std::string_view str) const   { return hash_type{} (str); }
-    //   std::size_t operator() (const std::string &str) const { return hash_type{} (str); }
-    // };
-
-    std::unordered_map<std::string, HeaderData> _headers; // , StringHash, std::equal_to<>> _headers;
+    std::map<std::string, HeaderData> _headers;
 };
 
 }

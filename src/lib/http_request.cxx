@@ -166,11 +166,11 @@ void HttpRequest::queryParser (HttpRequest &req) {
 // ----------------------------------------------------------------------------
 void HttpRequest::bodyParser (HttpRequest &req) {
  if (!req.body.empty()) {
-   if (req.headers.get ("Content-Type").compare (0, 16, "application/json") == 0) {
+  //  if (req.headers.get ("content-type").compare (0, 16, "application/json") == 0) {
     // FIXME
     //  rapidjson::Document doc;
     //  doc.Parse (reinterpret_cast<char  *> (req.body.data()));
-   }
+  //  }
  }
 }
 

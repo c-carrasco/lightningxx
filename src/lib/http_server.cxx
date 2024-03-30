@@ -14,7 +14,7 @@ namespace lightning {
 // ----------------------------------------------------------------------------
 // Constructor
 // ----------------------------------------------------------------------------
-HttpServer::HttpServer (uint16_t port, std::size_t poolSize){
+HttpServer::HttpServer (uint16_t port, std::size_t poolSize, LogLevel logLevel): _logger { logLevel } {
   _logger.transport (cxxlog::transport::OutputStream { std::cout });
 
   asio::ip::tcp::endpoint ep { asio::ip::tcp::v4(), port };
