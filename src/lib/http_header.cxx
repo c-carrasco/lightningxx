@@ -3,6 +3,8 @@
 //
 // Copyright (c) 2024 Carlos Carrasco
 // ----------------------------------------------------------------------------
+#include <algorithm>
+
 #include <lightning/http_header.h>
 
 
@@ -27,7 +29,7 @@ bool HttpHeader::contains (std::string_view name) const {
 std::optional<std::string_view> HttpHeader::get (std::string_view name) const {
   std::string lower;
   lower.resize(name.size());
-  std::transform (std::begin (name), std::end (name), std::begin(lower), [] (unsigned char c) {
+  std::transform (std::begin (name), std::end (name), std::begin (lower), [] (unsigned char c) {
     return std::tolower (c);
   });
 
@@ -43,7 +45,7 @@ std::optional<std::string_view> HttpHeader::get (std::string_view name) const {
 void HttpHeader::set (std::string_view name, std::string_view value) {
   std::string lower;
   lower.resize(name.size());
-  std::transform (std::begin (name), std::end (name), std::begin(lower), [] (unsigned char c) {
+  std::transform (std::begin (name), std::end (name), std::begin (lower), [] (unsigned char c) {
     return std::tolower (c);
   });
 

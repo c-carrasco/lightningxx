@@ -32,7 +32,7 @@ HttpServer::HttpServer (uint16_t port, std::size_t poolSize, LogLevel logLevel):
 
   _asioPool.reserve (poolSize);
   for (std::size_t i = 0; i < poolSize; ++i)
-    _asioPool.emplace_back ([ & ] { _ioService.run(); });
+    _asioPool.emplace_back ([ this ] { _ioService.run(); });
 
   _logger.info ("Listening, port={}", port);
 }
@@ -107,7 +107,6 @@ void HttpServer::_acceptNext () {
 // ----------------------------------------------------------------------------
 std::optional<RequestHandler> HttpServer::_find (const HttpRequest &request) const {
   const auto index { static_cast<decltype(_routes)::size_type> (request.method) };
-  assert ((index >= 0));
 
   _logger.debug ("searching {} ...", request.path);
 

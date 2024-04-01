@@ -28,14 +28,12 @@ using ParserData = struct {
 // ----------------------------------------------------------------------------
 // bool HttpRequest::parse (const char *buffer, size_t bufLen) {
 bool HttpRequest::parse (std::string_view buffer) {
-  // std::ignore = buffer;
-  // std::ignore = bufLen;
   http_parser_settings settings;
-  http_parser *parser = new http_parser;
+  http_parser parser {};
   ParserData data { this, nullptr, 0 };
 
-  http_parser_init (parser, HTTP_REQUEST);
-  parser->data = static_cast<void *> (&data);
+  http_parser_init (&parser, HTTP_REQUEST);
+  parser.data = static_cast<void *> (&data);
 
   settings.on_message_begin = [] ([[maybe_unused]] http_parser *parser) -> int {
     return 0;
@@ -143,7 +141,7 @@ bool HttpRequest::parse (std::string_view buffer) {
   };
 
   // http_parser_execute (parser, &settings, buffer, bufLen);
-  http_parser_execute (parser, &settings, buffer.data(), buffer.size());
+  http_parser_execute (&parser, &settings, buffer.data(), buffer.size());
 
 //  for (auto &funct: _parsers)
 //    funct (*this);
