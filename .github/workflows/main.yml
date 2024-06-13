@@ -33,7 +33,7 @@ jobs:
           folder: build/release/doc/html
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-13
 
     steps:
       - name: Checkout
