@@ -5,6 +5,7 @@
 // ----------------------------------------------------------------------------
 #ifndef __LIGHTNING_HTTP_HEADER_H__
 #define __LIGHTNING_HTTP_HEADER_H__
+#include <iostream>
 #include <map>
 #include <optional>
 #include <string>
@@ -39,6 +40,13 @@ class HttpHeader {
 
     inline const_iterator cbegin () const { return _headers.begin(); }
     inline const_iterator cend () const { return _headers.end(); }
+
+    friend std::ostream & operator<< (std::ostream &os, const HttpHeader &obj) {
+      for (const auto &kv: obj._headers)
+        os << kv.second.name << ": " << kv.second.value << std::endl;
+
+      return os;
+    }
 
   private:
     std::map<std::string, HeaderData> _headers;

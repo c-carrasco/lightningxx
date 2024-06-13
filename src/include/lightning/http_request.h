@@ -13,6 +13,7 @@
 
 #include <lightning/http_method.h>
 #include <lightning/http_header.h>
+#include <lightning/types.h>
 
 
 namespace lightning {
@@ -27,7 +28,11 @@ enum class ProtocolType: int {
 
 class HttpRequest {
   public:
-    using ParseHandler = std::function<void (HttpRequest &)>;
+    // using ParseHandler = std::function<void (HttpRequest &)>;
+
+    HttpRequest (std::reference_wrapper<const Logger> _logger): _logger { std::move (_logger) } {
+      // empty
+    }
 
     HttpMethod method;
     std::string path;
@@ -37,29 +42,29 @@ class HttpRequest {
       uint16_t major;
       uint16_t minor;
     } version;
-//    std::string host; // from headers (host)
-//    uint16_t port; // from headers (host)
+    std::string host; // from headers (host)
+    // uint16_t port;
     std::string ip;
     ProtocolType protocol { ProtocolType::kUnknown };
     HttpHeader headers;
-    struct {
-      std::map<std::string, std::string> path;
-      std::map<std::string, std::string> query;
-      std::map<std::string, std::string> body; // parsed
-    } params;
+    // struct {
+    //   std::map<std::string, std::string> path;
+    //   std::map<std::string, std::string> query;
+    //   std::map<std::string, std::string> body; // parsed
+    // } params;
     int32_t statusCode;
     std::vector<const uint8_t *> body;
 
-    // bool parse (const char *data, size_t len);
     bool parse (std::string_view data);
 
-    void use (ParseHandler &&handler) { _parsers.push_back (handler); }
+    // void use (ParseHandler &&handler) { _parsers.push_back (handler); }
 
-    static void queryParser (HttpRequest &req);
-    static void bodyParser (HttpRequest &req);
+    // static void queryParser (HttpRequest &req);
+    // static void bodyParser (HttpRequest &req);
 
   private:
-    std::vector<ParseHandler> _parsers;
+    // std::vector<ParseHandler> _parsers;
+    std::reference_wrapper<const Logger> _logger;
 };
 
 }

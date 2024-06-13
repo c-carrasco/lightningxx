@@ -5,8 +5,6 @@
 // ----------------------------------------------------------------------------
 #include <gtest/gtest.h>
 
-#include <cpp20_http_client.hpp>
-
 #include <lightning/http_header.h>
 
 
@@ -48,6 +46,9 @@ TEST (HttpHeader, test_set_get) {
   ASSERT_EQ (header.get ("TEST-KEY-2").value(), "some-value-2");
   ASSERT_TRUE (header.get ("TEST-KEY-2").has_value());
   ASSERT_EQ (header.get ("test-key-2").value(), "some-value-2");
+
+  header.set ("test-key-2", "new-value");
+  ASSERT_EQ (header.get ("test-key-2").value(), "new-value");
 }
 
 // ----------------------------------------------------------------------------

@@ -22,7 +22,6 @@ class HttpResponse {
       return *this;
     }
     HttpResponse & send (const std::string &data);
-    // HttpResponse & send (const rapidjson::Document &document);
 
     HttpHeader & headers() { return _headers; }
 
@@ -30,16 +29,6 @@ class HttpResponse {
     uint32_t _status = 0;
     HttpHeader _headers;
     std::string _data;
-
-    // std::string _raw {
-    //   "HTTP/1.1 200 OK\r\n"
-    //   "Connection: keep-alive\r\n"
-    //   "Content-Length: 12\r\n"
-    //   "Server: Pure asio bench server\r\n"
-    //   "Content-Type: text/plain; charset=utf-8\r\n"
-    //   "\r\n"
-    //   "Hello world!"
-    // };
 };
 
 }

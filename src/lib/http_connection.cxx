@@ -71,7 +71,7 @@ void HttpConnection::_consumeData (const char *data, std::size_t length) {
   }
 
   if (messageComplete) {
-    HttpRequest request;
+    HttpRequest request { _logger };
     HttpResponse response;
 
     _inputBuffer.consumedBytes (d - data + 4);

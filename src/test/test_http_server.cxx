@@ -5,7 +5,7 @@
 // ----------------------------------------------------------------------------
 #include <gtest/gtest.h>
 
-#include <cpp20_http_client.hpp>
+#include <httplib.h>
 
 #include <lightning/http_server.h>
 
@@ -29,15 +29,69 @@ inline lightning::LogLevel getLogLevel (const lightning::LogLevel defLevel = lig
 // ----------------------------------------------------------------------------
 // test_get_simple_text
 // ----------------------------------------------------------------------------
-TEST (HttpHeader, test_get_simple_text) {
+TEST (HttpServer, test_get_simple_text) {
   lightning::HttpServer server { 8080, getLogLevel() };
 
-  server.addRoute (lightning::HttpMethod::kGet, "/hello", [] ([[maybe_unused]] const auto &request, auto &response) {
+  server.addRoute (lightning::HttpMethod::kGet, "/hello", [] (const auto &request, auto &response) {
+    ASSERT_EQ (request.method, lightning::HttpMethod::kGet);
+    ASSERT_EQ (request.path, "/hello");
+    ASSERT_EQ (request.query, "param=123&test=abc");
+    ASSERT_EQ (request.url, "/hello?param=123&test=abc");
+    ASSERT_EQ (request.version.major, 1);
+    ASSERT_EQ (request.version.minor, 1);
+    ASSERT_EQ (request.host, "localhost");
+    ASSERT_EQ (request.ip, "127.0.0.1");
+    ASSERT_EQ (request.protocol, lightning::ProtocolType::kHttp);
+    ASSERT_TRUE (request.headers.contains("host"));
+    ASSERT_EQ (request.headers.get("host"), "localhost:8080");
+    ASSERT_TRUE (request.headers.contains("headername"));
+    ASSERT_EQ (request.headers.get("HeaderName"), "header value");
+    ASSERT_EQ (request.body.size(), 0);
     response.status(200).send ("Hello World!");
   });
 
-  const auto response { http_client::get("http://localhost:8080/hello").send() };
-  ASSERT_EQ (response.get_status_code(), http_client::StatusCode::Ok);
-  ASSERT_EQ (response.get_http_version(), "HTTP/1.1");
-  ASSERT_EQ (response.get_body_string(), "Hello World!");
+  httplib::Client client { "localhost", 8080 };
+  const auto response { client.Get ("/hello?param=123&test=abc", {
+    { "HeaderName", "header value" }
+  }) };
+
+  ASSERT_EQ (response->status, 200);
+  ASSERT_EQ (response->version, "HTTP/1.1");
+  ASSERT_EQ (response->body, "Hello World!");
+}
+
+// ----------------------------------------------------------------------------
+// test_post_simple_text
+// ----------------------------------------------------------------------------
+TEST (HttpServer, test_post_simple_text) {
+  lightning::HttpServer server { 8080, getLogLevel() };
+
+  const std::string body { "aa=bb" };
+
+  server.addRoute (lightning::HttpMethod::kPost, "/v1/hello", [ &body ] (const auto &request, auto &response) {
+    ASSERT_EQ (request.method, lightning::HttpMethod::kPost);
+    ASSERT_EQ (request.path, "/v1/hello");
+    ASSERT_EQ (request.query, "p=1");
+    ASSERT_EQ (request.url, "/v1/hello?p=1");
+    ASSERT_EQ (request.version.major, 1);
+    ASSERT_EQ (request.version.minor, 1);
+    ASSERT_EQ (request.host, "localhost");
+    ASSERT_EQ (request.ip, "127.0.0.1");
+    ASSERT_EQ (request.protocol, lightning::ProtocolType::kHttp);
+    ASSERT_TRUE (request.headers.contains("host"));
+    ASSERT_TRUE (request.headers.contains("headername"));
+    ASSERT_EQ (request.headers.get("content-length"), std::to_string(body.size()));
+    ASSERT_EQ (request.body.size(), body.size());
+    response.status(200).send ("Hello World!");
+  });
+
+  httplib::Client client { "localhost", 8080 };
+  const auto response { client.Post ("/v1/hello?p=1", {
+    { "HeaderName", "header value" },
+    { "Content-Type", "text/plain" }
+  }, body, "text/plain") };
+
+  ASSERT_EQ (response->status, 200);
+  ASSERT_EQ (response->version, "HTTP/1.1");
+  ASSERT_EQ (response->body, "Hello World!");
 }

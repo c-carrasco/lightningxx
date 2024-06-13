@@ -49,7 +49,7 @@ void HttpHeader::set (std::string_view name, std::string_view value) {
     return std::tolower (c);
   });
 
-  _headers.insert (std::make_pair (std::move (lower), HeaderData { std::move (name), std::move (value) }));
+  _headers[lower] = HeaderData { std::move (name), std::move (value) };
 }
 
 }

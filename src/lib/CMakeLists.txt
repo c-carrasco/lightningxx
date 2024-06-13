@@ -7,4 +7,4 @@ target_include_directories (lightning
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
 )
 
-target_link_libraries (lightning asio::asio http_parser::http_parser cxxlogger)
+target_link_libraries (lightning asio::asio llhttp::llhttp cxxlogger)

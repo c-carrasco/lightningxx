@@ -21,7 +21,7 @@ set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type options are: Debug, Rel
 list (APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 find_package (asio REQUIRED)
-find_package (http_parser REQUIRED) # FIXME: migrate to llhttp
+find_package (llhttp REQUIRED)
 find_package (GTest REQUIRED)
 
 find_program (CCACHE_PROGRAM ccache)
