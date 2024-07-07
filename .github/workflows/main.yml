@@ -42,6 +42,7 @@ jobs:
       - name: Install Conan 1.x
         run: |
           echo 'export PATH="/opt/homebrew/opt/conan@1/bin:$PATH"' >> /Users/runner/.bash_profile
+          source /Users/runner/.bash_profile
           brew install conan@1
           conan profile new default --detect
 
