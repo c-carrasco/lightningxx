@@ -36,7 +36,7 @@ help () {
   echo "  test            run tests"
   echo "  docker          run build in docker with gcc13"
   echo "  docker=gcc13    run build in docker with gcc13"
-  echo "  docker=clang17  run build in docker with gcc13"
+  echo "  docker=clang17  run build in docker with clang17"
   echo "  cxx14           set C++14 standard"
   echo "  cxx17           set C++17 standard"
   echo "  cxx23           set C++23 standard"

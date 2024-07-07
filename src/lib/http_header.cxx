@@ -34,7 +34,7 @@ std::optional<std::string_view> HttpHeader::get (std::string_view name) const {
   });
 
   if (auto it = _headers.find (lower); it != _headers.end())
-    return { it->second.value };
+    return { it->second };
 
   return std::nullopt;
 }
@@ -49,7 +49,8 @@ void HttpHeader::set (std::string_view name, std::string_view value) {
     return std::tolower (c);
   });
 
-  _headers[lower] = HeaderData { std::move (name), std::move (value) };
+  _headers[lower] = std::move(value);
+  _last = _headers.find (lower);
 }
 
 }

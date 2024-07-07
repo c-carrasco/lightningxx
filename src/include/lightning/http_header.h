@@ -6,7 +6,7 @@
 #ifndef __LIGHTNING_HTTP_HEADER_H__
 #define __LIGHTNING_HTTP_HEADER_H__
 #include <iostream>
-#include <map>
+#include <unordered_map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -19,13 +19,13 @@ namespace lightning {
 // ----------------------------------------------------------------------------
 class HttpHeader {
   public:
-    struct HeaderData {
-      std::string_view name;
-      std::string_view value;
-    };
+    // struct HeaderData {
+    //   std::string_view name;
+    //   std::string_view value;
+    // };
 
-    using iterator = std::map<std::string, HeaderData>::iterator;
-    using const_iterator = std::map<std::string, HeaderData>::const_iterator;
+    using iterator = std::unordered_map<std::string, std::string_view>::iterator;
+    using const_iterator = std::unordered_map<std::string, std::string_view>::const_iterator;
 
     bool contains (std::string_view name) const;
 
@@ -41,15 +41,18 @@ class HttpHeader {
     inline const_iterator cbegin () const { return _headers.begin(); }
     inline const_iterator cend () const { return _headers.end(); }
 
+    inline iterator last() const { return _last; }
+
     friend std::ostream & operator<< (std::ostream &os, const HttpHeader &obj) {
       for (const auto &kv: obj._headers)
-        os << kv.second.name << ": " << kv.second.value << std::endl;
+        os << kv.first << ": " << kv.second << std::endl;
 
       return os;
     }
 
   private:
-    std::map<std::string, HeaderData> _headers;
+    std::unordered_map<std::string, std::string_view> _headers;
+    iterator _last;
 };
 
 }

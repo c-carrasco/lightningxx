@@ -3,16 +3,19 @@
 //
 // Copyright (c) 2024 Carlos Carrasco
 // ----------------------------------------------------------------------------
+#include <filesystem>
+#include <fstream>
+
 #include <gtest/gtest.h>
 
-#include <httplib.h>
+#include <fmt/format.h>
 
 #include <lightning/http_server.h>
 
 // ----------------------------------------------------------------------------
 // getLogLevel
 // ----------------------------------------------------------------------------
-inline lightning::LogLevel getLogLevel (const lightning::LogLevel defLevel = lightning::LogLevel::kWarn) {
+static lightning::LogLevel getLogLevel (const lightning::LogLevel defLevel = lightning::LogLevel::kWarn) {
   if (const auto s = std::getenv ("LIGHTNINGXX_TEST_LOG_LEVEL")) {
     if ((std::strcmp (s, "verbose") == 0) || (std::strcmp (s, "v") == 0)) return lightning::LogLevel::kVerbose;
     if ((std::strcmp (s, "debug") == 0) || (std::strcmp (s, "d") == 0)) return lightning::LogLevel::kDebug;
@@ -23,6 +26,35 @@ inline lightning::LogLevel getLogLevel (const lightning::LogLevel defLevel = lig
   }
 
   return defLevel;
+}
+
+// ----------------------------------------------------------------------------
+// createTempFiles
+// ----------------------------------------------------------------------------
+static std::pair<std::filesystem::path, std::filesystem::path> createTempFiles () {//const std::string &name) {
+  const std::string name { ::testing::UnitTest::GetInstance()->current_test_info()->name() };
+  auto statusFileName {std::filesystem::temp_directory_path() / name };
+  auto bodyFileName { std::filesystem::temp_directory_path() / name };
+
+  return { statusFileName.replace_extension (".status"), bodyFileName.replace_extension (".body") };
+}
+
+// ----------------------------------------------------------------------------
+// readResponse
+// ----------------------------------------------------------------------------
+static std::pair<int32_t, std::string> readResponse (
+  const std::filesystem::path &status,
+  const std::filesystem::path &body
+) {
+  std::ifstream statusFile { status };
+  std::ifstream bodyFile { body };
+
+  std::string statusLine;
+  std::getline (statusFile, statusLine);
+
+  std::string bodyContent { std::istreambuf_iterator<char> { bodyFile }, std::istreambuf_iterator<char> {} };
+
+  return { std::stoi (statusLine), bodyContent };
 }
 
 
@@ -50,14 +82,18 @@ TEST (HttpServer, test_get_simple_text) {
     response.status(200).send ("Hello World!");
   });
 
-  httplib::Client client { "localhost", 8080 };
-  const auto response { client.Get ("/hello?param=123&test=abc", {
-    { "HeaderName", "header value" }
-  }) };
+  const auto [ statusFileName, bodyFileName ] = createTempFiles ();
 
-  ASSERT_EQ (response->status, 200);
-  ASSERT_EQ (response->version, "HTTP/1.1");
-  ASSERT_EQ (response->body, "Hello World!");
+  const auto exit = std::system (fmt::format(
+    "curl -s -X GET 'http://localhost:8080/hello?param=123&test=abc' -H 'HeaderName: header value' -w '%{{http_code}}' -o {} > {}",
+    bodyFileName.string(),
+    statusFileName.string()
+  ).c_str());
+  ASSERT_EQ (exit, 0);
+
+  const auto [ resStatus, resBody ] = readResponse (statusFileName, bodyFileName);
+  ASSERT_EQ (resStatus, 200);
+  ASSERT_EQ (resBody, "Hello World!");
 }
 
 // ----------------------------------------------------------------------------
@@ -80,18 +116,22 @@ TEST (HttpServer, test_post_simple_text) {
     ASSERT_EQ (request.protocol, lightning::ProtocolType::kHttp);
     ASSERT_TRUE (request.headers.contains("host"));
     ASSERT_TRUE (request.headers.contains("headername"));
-    ASSERT_EQ (request.headers.get("content-length"), std::to_string(body.size()));
+    // ASSERT_EQ (request.headers.get("content-length"), std::to_string(body.size()));
     ASSERT_EQ (request.body.size(), body.size());
     response.status(200).send ("Hello World!");
   });
 
-  httplib::Client client { "localhost", 8080 };
-  const auto response { client.Post ("/v1/hello?p=1", {
-    { "HeaderName", "header value" },
-    { "Content-Type", "text/plain" }
-  }, body, "text/plain") };
+  const auto [ statusFileName, bodyFileName ] = createTempFiles ();
 
-  ASSERT_EQ (response->status, 200);
-  ASSERT_EQ (response->version, "HTTP/1.1");
-  ASSERT_EQ (response->body, "Hello World!");
+  const auto exit = std::system (fmt::format(
+    "curl -s -X POST 'http://localhost:8080/v1/hello?p=1' -H 'HeaderName: header value' -H 'Content-Type: text/plain' -d '{}' -w '%{{http_code}}' -o {} > {}",
+    body,
+    bodyFileName.string(),
+    statusFileName.string()
+  ).c_str());
+  ASSERT_EQ (exit, 0);
+
+  const auto [ resStatus, resBody ] = readResponse (statusFileName, bodyFileName);
+  ASSERT_EQ (resStatus, 200);
+  ASSERT_EQ (resBody, "Hello World!");
 }

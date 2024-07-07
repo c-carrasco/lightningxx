@@ -78,17 +78,14 @@ TEST (HttpHeader, test_iterator) {
   header.set ("AA", "bb");
   for (auto it = header.begin(); it != header.end(); it++) {
     ASSERT_EQ (it->first, "aa");
-    ASSERT_EQ (it->second.name, "AA");
-    ASSERT_EQ (it->second.value, "bb");
+    ASSERT_EQ (it->second, "bb");
   }
 
   header.set ("ccc", "ddd");
   auto it = header.cbegin();
-  ASSERT_EQ (it->first, "aa");
+  ASSERT_EQ (it->first, "ccc");
   it = std::next(it);
-  ASSERT_EQ (it->first, "ccc");
-  ASSERT_EQ (it->first, "ccc");
-  ASSERT_EQ (it->second.name, "ccc");
-  ASSERT_EQ (it->second.value, "ddd");
+  ASSERT_EQ (it->first, "aa");
+  ASSERT_EQ (it->second, "bb");
   ASSERT_EQ (std::next(it), header.cend());
 }

@@ -49,9 +49,9 @@ std::string HttpResponse::data() const {
   res.append (" \r\n");
 
   for (auto it = _headers.cbegin(); it != _headers.cend(); it++) {
-    res.append (it->second.name);
+    res.append (it->first);
     res.append (": ");
-    res.append (it->second.value);
+    res.append (it->second);
     res.append ("\r\n");
   }
 

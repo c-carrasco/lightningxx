@@ -20,7 +20,7 @@ namespace lightning {
 // ----------------------------------------------------------------------------
 void HttpConnection::waitForHttpMessage() {
   if (_inputBuffer.length() != 0) {
-    // If a pipeline requests were sent by client then the beginning (or even entire request) of it
+    // If pipeline requests were sent by client then the beginning (or even entire request) of it
     // is in the buffer obtained from socket in previous read operation.
     _consumeData (_inputBuffer.bytes(), _inputBuffer.length());
   }

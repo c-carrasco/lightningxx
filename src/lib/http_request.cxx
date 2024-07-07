@@ -92,18 +92,20 @@ bool HttpRequest::parse (std::string_view buffer) {
   settings.on_header_value = [] (llhttp_t *parser, const char *at, size_t length) {
     auto request { static_cast<HttpRequest*>(parser->data) };
 
-    request->_logger.get().verbose ("HTTP header value parser: {}", std::string_view { at, length });
+    const std::string_view value { at, length };
 
-    auto lastIt { std::prev (request->headers.end()) };
-    if (lastIt->second.value.empty()) {
-      lastIt->second.value = std::string_view (at, length);
+    request->_logger.get().verbose ("HTTP header value parser: {}", value);
 
-      if (lastIt->first.compare ("host") == 0) {
-        if (const auto pos = lastIt->second.value.find (':'); pos != std::string_view::npos)
-          request->host.assign (at, pos);
-        else
-          request->host.assign (at, length);
-      }
+    if (request->headers.last()->second.empty())
+      request->headers.last()->second = value;
+    else
+      request->_logger.get().warn ("HTTP parsing warning: header '{}' already set", request->headers.last()->first);
+
+    if (request->headers.last()->first.compare ("host") == 0) {
+      if (const auto pos = value.find (':'); pos != std::string_view::npos)
+        request->host.assign (at, pos);
+      else
+        request->host.assign (at, length);
     }
 
     return 0;
@@ -133,10 +135,13 @@ bool HttpRequest::parse (std::string_view buffer) {
 
     request->_logger.get().verbose ("HTTP body parser: {}", StringUtil::fmtBuffer (at, length, 0, 16, 8));
 
+    request->body.reserve (length);
     request->body.assign (length, reinterpret_cast<const uint8_t *>(at));
 
     return 0;
   };
+
+  _logger.get().verbose ("HTTP parsing buffer: {}", StringUtil::fmtBuffer (buffer.data(), buffer.size(), 0, 16, 8));
 
   llhttp_init (&parser, HTTP_BOTH, &settings);
   parser.data = this;

@@ -50,6 +50,11 @@ include(FetchContent)
 
 set (CXXLOG_BUILD_TESTS OFF CACHE INTERNAL "")
 set (CXXLOG_DOCUMENTATION OFF CACHE INTERNAL "")
+
+if (NOT SUPPORT_STD_FORMAT OR CMAKE_CXX_STANDARD LESS_EQUAL 17)
+  add_compile_definitions(CXXLOG_USE_FMT_LIBRARY)
+endif()
+
 FetchContent_Declare(
     CxxLogger
     GIT_REPOSITORY https://github.com/c-carrasco/cxxlogger.git
