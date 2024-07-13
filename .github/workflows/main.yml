@@ -39,7 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-     - name: Install Conan 1.x
+      - name: Install Conan 1.x
         uses: turtlebrowser/get-conan@main
         with:
           version: 1.63.0
