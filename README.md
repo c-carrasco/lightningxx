@@ -67,6 +67,10 @@ supports the CMake package configuration files used by this project.
   - `gcc13`: Use GCC 13 (selected if no compiler is specified).
   - `clang17`: Use Clang 17.
 
+Sanitizers default to off on each invocation. Enable them explicitly when needed;
+`tsan=off` also disables ThreadSanitizer. Run ThreadSanitizer separately from
+AddressSanitizer. `tsan=on` enables instrumentation in both Debug and Release builds.
+
 Examples:
 
 ```bash
@@ -75,6 +79,9 @@ Examples:
 
 # Build in debug mode with Clang 17 and AddressSanitizer, then run unit tests
 ./build.sh docker=clang17 debug test asan=on
+
+# Build and run tests with ThreadSanitizer
+./build.sh test tsan=on
 
 # Start a Docker development environment with GCC 13
 ./build.sh docker=gcc13

@@ -78,6 +78,10 @@ set (CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -g -D
 # specific flags for Debug builds.
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -Og -DDEBUG -D_DEBUG -fno-inline")
 
+if (ENABLE_ASAN AND ENABLE_TSAN)
+  message (FATAL_ERROR "AddressSanitizer and ThreadSanitizer cannot be enabled together. Use asan=on or tsan=on in separate builds.")
+endif()
+
 if (ENABLE_ASAN)
   # Enable address sanitizer
   #   -ggdb an -fno-omit-frame-pointer: enable the call stack and line number for better report format to locate bug in user code
@@ -95,8 +99,8 @@ if (ENABLE_UBSAN)
 endif ()
 
 if (ENABLE_TSAN)
-  # Enable Thread Sanitizer
-  set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=thread")
+  # Instrument compilation and linking in every build configuration.
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -g -fno-omit-frame-pointer")
 endif()
 
 # defines

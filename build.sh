@@ -5,7 +5,8 @@ ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "$ROOT_DIR"
 BUILD_TYPE=Debug
 GENERATOR="Unix Makefiles"
-CMAKE_OPTIONS=()
+# Sanitizers apply to this invocation, not to settings left in CMake's cache.
+CMAKE_OPTIONS=(-DENABLE_ASAN:BOOL=OFF -DENABLE_UBSAN:BOOL=OFF -DENABLE_TSAN:BOOL=OFF)
 RUN_TESTS=0
 RUN_DOCKER=0
 GEN_DOC=0
@@ -34,7 +35,7 @@ help () {
   echo "  mold            use mold linker"
   echo "  asan=on         enable address sanitizer"
   echo "  ubsan=on        enable undefined behavior sanitizer"
-  echo "  tsan=on         enable thread sanitizer"
+  echo "  tsan=on|off     enable or disable thread sanitizer (default: off)"
   echo "  test            run tests"
   echo "  docker          run build in docker with gcc13"
   echo "  docker=gcc13    run build in docker with gcc13"
@@ -174,6 +175,7 @@ if [[ $RUN_DOCKER -eq 1 ]]; then
     -v $PWD/.conan.$COMPILER/:/home/$USER/.conan \
     -v $PWD/.ccache.$COMPILER:/.ccache \
     -e ASAN_OPTIONS=$ASAN_OPTIONS \
+    -e TSAN_OPTIONS \
     -w /workspace/source \
     --name $COMPILER \
     $DOCKER_IMAGE_NAME \
