@@ -6,7 +6,9 @@
 #ifndef __LIGHTNING_HTTP_SERVER_H__
 #define __LIGHTNING_HTTP_SERVER_H__
 #include <functional>
+#include <memory>
 #include <mutex>
+#include <string>
 #include <string_view>
 #include <thread>
 #include <vector>
@@ -17,18 +19,26 @@
 #include <lightning/http_method.h>
 #include <lightning/http_request.h>
 #include <lightning/http_response.h>
+#include <lightning/dispatcher.h>
 
 
 namespace lightning {
 
 class HttpConnection;
 
-// Handlers run synchronously and may be invoked concurrently for different connections.
-using RequestHandler = std::function<void (const HttpRequest &, HttpResponse &)>;
+struct ServerOptions {
+  uint16_t port { 8080 };
+  // Numeric IPv4 or IPv6 address. Loopback is the default.
+  std::string address { "127.0.0.1" };
+  size_t workers { 1 };
+  LogLevel logLevel { LogLevel::kInfo };
+};
 
 class HttpServer {
   public:
     HttpServer (uint16_t port, size_t poolSize, LogLevel logLevel);
+    // The dispatcher is installed before any connection can be accepted.
+    HttpServer (ServerOptions options, std::shared_ptr<Dispatcher> dispatcher);
 
     inline HttpServer (uint16_t port = 8080, LogLevel logLevel = LogLevel::kInfo): HttpServer { port, 1, logLevel } {
       // empty
@@ -49,12 +59,8 @@ class HttpServer {
     }
 
   private:
-    struct Route {
-      std::string path;
-      RequestHandler handler;
-    };
-
     Logger _logger;
+    std::shared_ptr<Dispatcher> _dispatcher;
 
     asio::io_service _ioService;
     asio::ip::tcp::acceptor _acceptor { asio::make_strand (_ioService) };
@@ -63,11 +69,8 @@ class HttpServer {
     std::vector<std::thread> _asioPool;
     std::vector<std::weak_ptr<HttpConnection>> _connections;
     mutable std::mutex _configMutex;
-    std::array<std::vector<Route>, kNumHttpMethods> _routes {};
-    RequestHandler _routeNotFound = nullptr;
 
     void _acceptNext();
-    std::optional<RequestHandler> _find (const HttpRequest &) const;
 };
 
 }

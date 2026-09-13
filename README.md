@@ -9,15 +9,78 @@ Lightning++ is a lightweight, expressive, and flexible web framework for C++. De
 
 ## Features
 
-- **Expressive Routing**: Define routes using easy-to-understand syntax to respond to HTTP requests.
-- **Middleware Support**: Enhance functionality with middleware at the application or route level for tasks like logging, parsing, and session management.
+- **Expressive Routing**: Register exact method/path routes using `app.get()`, `app.post()`, and other method helpers.
+- **Middleware Support (planned)**: Application and router middleware for logging, parsing, and session management.
 - **Fast and Lightweight**: Optimized for speed and a low memory footprint to deliver high performance.
-- **Asynchronous Support**: Handle requests asynchronously, leveraging modern C++ features to manage non-blocking I/O operations.
-- **Header-Only**: Easy to integrate into any C++ project as a header-only library, simplifying dependency management.
+- **Asynchronous Networking**: Nonblocking socket I/O with synchronous handlers running on configurable I/O workers.
+- **C++20 Library**: A compiled static library built with CMake and Conan.
 
 ## Quick Start
 
-TODO
+```cpp
+#include <lightning/app.h>
+
+int main() {
+  lightning::App app;
+
+  app.get ("/", [] (const auto &, auto &res) {
+    res.send ("Hello World!");
+  });
+
+  app.listen (3000);
+}
+```
+
+Constructing `App` opens no sockets. Configure routes first, then use `listen()`
+to start the server and block, or `start()` to return after startup. The default
+listening address is `127.0.0.1`. Use `ServerOptions` to set a numeric IPv4/IPv6
+address, port, worker count, and log level:
+
+```cpp
+lightning::ServerOptions options;
+options.address = "127.0.0.1";
+options.port = 3000; // Use zero to let the OS allocate a port; read app.port().
+options.workers = 4;
+app.start (options);
+// The application can do other work here.
+app.stop();
+```
+
+`stop()` waits for running handlers and closes connections. Call it from a
+control thread, never from a request handler. Calling it again is harmless.
+For blocking `listen()`, another control thread calls `stop()`; join the thread
+running `listen()` before destroying the app. Lifecycle methods are ordinary
+thread APIs and must not be called directly from an OS signal handler.
+An app can restart after stopping, retaining its routes. Starting an already
+running/stopping app throws `std::logic_error`; failed startup leaves it reusable.
+`running()` is false and `port()` is zero while stopped or stopping.
+
+Available helpers are `get`, `head`, `post`, `put`, `del`, `connect`, `options`,
+`trace`, and `patch`. `del` represents HTTP DELETE because `delete` is a C++
+keyword. They return `App &` for chaining; `addRoute()` remains available for
+explicit `HttpMethod` registration.
+
+Routes match the method and path exactly, in registration order. Query strings
+are separate from the path; case and trailing slashes are significant. Named
+parameters, wildcard routes, and middleware are planned. Register HEAD explicitly
+at this stage. `setDefault()` installs a fallback; an empty handler restores 404.
+
+To build and run the [hello/echo example](examples/hello.cxx):
+
+```bash
+cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -DLIGHTNING_BUILD_EXAMPLES=ON
+cmake --build build/debug --target lightning_hello --parallel
+./build/debug/bin/lightning_hello
+# From another terminal:
+curl http://127.0.0.1:3000/
+curl --data-binary 'hello' http://127.0.0.1:3000/echo
+```
+
+Use `App::dispatch(request, response)` for application tests without opening a
+socket. It shares the `Dispatcher` used by `HttpServer`. Direct dispatch propagates
+handler exceptions to the caller; socket requests retain the 500 response and
+connection-close behavior described below. It does not perform HTTP parsing or
+wire-level HEAD body suppression.
 
 ## Documentation
 

@@ -51,3 +51,8 @@ FetchContent_MakeAvailable(CxxLogger)
 target_compile_definitions (cxxlogger INTERFACE CXXLOG_USE_FMT_LIBRARY)
 
 add_subdirectory (src)
+
+option (LIGHTNING_BUILD_EXAMPLES "Build Lightning++ examples" OFF)
+if (LIGHTNING_BUILD_EXAMPLES)
+  add_subdirectory (examples)
+endif()
