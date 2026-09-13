@@ -9,6 +9,7 @@
 #include <any>
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -16,6 +17,9 @@
 #include <lightning/http_method.h>
 #include <lightning/http_header.h>
 #include <lightning/types.h>
+#include <lightning/json.h>
+#include <lightning/url_parameters.h>
+#include <lightning/transport_options.h>
 
 
 namespace lightning {
@@ -38,6 +42,10 @@ class HttpRequest {
 
     HttpMethod method { HttpMethod::kUnknown };
     std::string path;
+    // Captures are owned, decoded once, and scoped to the current route/mount.
+    std::unordered_map<std::string, std::string> params;
+    // Raw mount prefix; path is relative to it while inside a router.
+    std::string baseUrl;
     std::string query;
     std::string url;
     struct {
@@ -49,23 +57,22 @@ class HttpRequest {
     std::string ip;
     ProtocolType protocol { ProtocolType::kUnknown };
     HttpHeader headers;
-    // struct {
-    //   std::map<std::string, std::string> path;
-    //   std::map<std::string, std::string> query;
-    //   std::map<std::string, std::string> body; // parsed
-    // } params;
+    HttpHeader trailers;
     int32_t statusCode { 0 };
     std::vector<uint8_t> body;
+    // Populated only by the corresponding body-parser middleware.
+    std::optional<Json> jsonBody;
+    std::optional<UrlParameters> formBody;
     // Per-request middleware context; values retain their C++ types via std::any.
     std::unordered_map<std::string, std::any> locals;
 
     // Parse exactly one complete request. All parsed data is owned by this object.
-    bool parse (std::string_view data);
+    bool parse (std::string_view data, RequestLimits limits = {});
 
-    // void use (ParseHandler &&handler) { _parsers.push_back (handler); }
-
-    // static void queryParser (HttpRequest &req);
-    // static void bodyParser (HttpRequest &req);
+    // Parse the current raw query on demand; the returned values own their data.
+    UrlParameters queryParams (UrlEncodedOptions options = {}) const {
+      return parseUrlEncoded (query, options);
+    }
 
   private:
     // std::vector<ParseHandler> _parsers;

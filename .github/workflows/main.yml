@@ -2,49 +2,81 @@ name: ci
 
 on:
   push:
-    branches:
-      - "**"
+    branches: ["**"]
+  pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc13, clang17]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
+      - name: Debug with ASan and UBSan
+        run: ./build.sh docker=${{ matrix.compiler }} debug asan=on ubsan=on test
+      - name: Release and installed consumer
+        run: ./build.sh docker=${{ matrix.compiler }} release test
+      - name: Benchmark correctness smoke tests
+        run: ./build.sh docker=${{ matrix.compiler }} bench test
 
-      - name: Build Debug GCC 13 C++20
-        run: ./build.sh docker=gcc13 debug clean ubsan=on asan=on test
-      - name: Build Release GCC 13 C++20
-        run: ./build.sh docker=gcc13 release clean test doc
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install Conan
+        run: python -m pip install 'conan>=2,<3'
+      - name: Debug with ASan and UBSan
+        run: ./build.sh debug asan=on ubsan=on test
+      - name: Release and installed consumer
+        run: ./build.sh release test
+      - name: Benchmark correctness smoke tests
+        run: ./build.sh bench test
 
-      - name: Build Debug Clang 17 C++20
-        run: ./build.sh docker=clang17 debug clean ubsan=on asan=on test
-      - name: Build Release Clang 17 C++20
-        run: ./build.sh docker=clang17 release clean test doc
+  coverage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install coverage toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 llvm-18 libc++-18-dev libc++abi-18-dev
+          python -m pip install 'conan>=2,<3'
+      - name: Tests and project coverage floors
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: ./build.sh coverage=on test
+      - name: Upload HTML, LCOV, and summary
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: coverage
+          path: build/debug/coverage/
+          if-no-files-found: error
 
+  documentation:
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    needs: [build-linux, build-macos, coverage]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Generate documentation
+        run: ./build.sh docker=gcc13 release doc
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           folder: build/release/doc/html
-
-  build-macos:
-    runs-on: macos-13
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install Conan 1.x
-        uses: turtlebrowser/get-conan@main
-        with:
-          version: 1.63.0
-
-      - name: Build Debug AppleClang C++20
-        run: ./build.sh debug clean ubsan=on asan=on test
-      - name: Build Release AppleClang C++20
-        run: ./build.sh release clean test

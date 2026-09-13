@@ -17,6 +17,8 @@
 #include <lightning/types.h>
 #include <lightning/http_request.h>
 #include <lightning/http_response.h>
+#include <lightning/transport_options.h>
+#include <lightning/async.h>
 
 
 namespace lightning {
@@ -61,26 +63,41 @@ class HttpConnection: public std::enable_shared_from_this<HttpConnection> {
     HttpConnection (
       asio::ip::tcp::socket && socket,
       std::function<void (HttpRequest &, HttpResponse &)> receivedRequest,
-      const Logger &logger
+      const Logger &logger,
+      TransportOptions options = {},
+      AsyncRequestHandler asyncReceivedRequest = {}
     );
 
-    ~HttpConnection();
+    ~HttpConnection() = default;
 
     void waitForHttpMessage();
-    // Called by the server after its I/O workers have stopped.
+    // Call on the connection strand, or after the server's I/O workers stop.
     void close();
 
   private:
     asio::ip::tcp::socket _socket;
+    asio::steady_timer _timer;
+    TransportOptions _options;
+    enum class Phase { kHeader, kBody, kHandler, kWrite, kIdle };
+    Phase _phase { Phase::kHeader };
+    uint64_t _timerGeneration { 0 };
+    bool _closed { false };
     std::function<void (HttpRequest &, HttpResponse &)> _onReceivedRequest;
+    AsyncRequestHandler _onReceivedAsync;
+    asio::cancellation_signal _handlerCancellation;
     InputBuffer _inputBuffer;
     std::reference_wrapper<const Logger> _logger;
     struct RequestState;
     std::unique_ptr<RequestState> _state;
 
+    void _waitForMessage();
+    void _deadline (Phase phase, std::chrono::milliseconds duration);
+    void _cancelDeadline();
+
     void _consumeMessage();
     void _afterRead (const std::error_code & ec, size_t length);
     void _consumeData (const char *data, size_t length);
+    Task<> _dispatchRequest (bool keepAlive, bool omitBody);
     void _writeResponseMessage (HttpResponse, bool closeAfter, bool omitBody = false);
 };
 

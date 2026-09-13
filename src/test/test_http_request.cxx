@@ -33,7 +33,7 @@ TEST (HttpRequest, appends_chunked_body) {
     "POST /body HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n"
     "3\r\nabc\r\n2\r\nde\r\n0\r\nX-Trailer: done\r\n\r\n"));
   EXPECT_EQ (bodyText (request), "abcde");
-  EXPECT_EQ (request.headers.get ("x-trailer"), "done");
+  EXPECT_EQ (request.trailers.get ("x-trailer"), "done");
 }
 
 TEST (HttpRequest, rejects_incomplete_invalid_and_multiple_messages) {

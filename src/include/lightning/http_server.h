@@ -20,6 +20,7 @@
 #include <lightning/http_request.h>
 #include <lightning/http_response.h>
 #include <lightning/dispatcher.h>
+#include <lightning/transport_options.h>
 
 
 namespace lightning {
@@ -32,6 +33,7 @@ struct ServerOptions {
   std::string address { "127.0.0.1" };
   size_t workers { 1 };
   LogLevel logLevel { LogLevel::kInfo };
+  TransportOptions transport;
 };
 
 class HttpServer {
@@ -44,12 +46,20 @@ class HttpServer {
       // empty
     }
 
-    // Waits for running handlers, then closes all connections. Destroy from an owning thread.
+    // Joins running workers, closes connections, cancels suspended handlers and
+    // drains ready cancellations. Destroy from an owning control thread.
     ~HttpServer();
 
     // Configuration can be changed while requests are being served.
     void addRoute (HttpMethod method, std::string_view path, RequestHandler &&handler);
+    template<detail::CoroutineRouteCallback Handler>
+    void addRoute (HttpMethod, std::string_view, Handler) = delete;
+    void addAsyncRoute (HttpMethod method, std::string_view path, AsyncRequestHandler handler) {
+      _dispatcher->addAsyncRoute (method, path, std::move (handler));
+    }
     void setDefault (RequestHandler &&handler);
+    template<detail::CoroutineRouteCallback Handler>
+    void setDefault (Handler) = delete;
     // Returns the actual listening port, including when constructed with port zero.
     uint16_t port() const { return _port; }
 
@@ -61,6 +71,7 @@ class HttpServer {
   private:
     Logger _logger;
     std::shared_ptr<Dispatcher> _dispatcher;
+    TransportOptions _transport;
 
     asio::io_service _ioService;
     asio::ip::tcp::acceptor _acceptor { asio::make_strand (_ioService) };

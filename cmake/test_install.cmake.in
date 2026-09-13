@@ -1,0 +1,51 @@
+function (checked)
+  execute_process (COMMAND ${ARGV} RESULT_VARIABLE result)
+  if (NOT result EQUAL 0)
+    message (FATAL_ERROR "Command failed (${result}): ${ARGV}")
+  endif()
+endfunction()
+
+set (test_root "@CMAKE_CURRENT_BINARY_DIR@/install-test")
+file (REMOVE_RECURSE "${test_root}")
+# Exercise library-only configuration without Conan or any GoogleTest discovery.
+# Reuse already resolved dependencies and logger sources; no network is needed.
+execute_process (COMMAND "@CMAKE_COMMAND@" -S "@PROJECT_SOURCE_DIR@"
+  -B "${test_root}/library-only" -G "@CMAKE_GENERATOR@"
+  "-DCMAKE_CXX_COMPILER=@CMAKE_CXX_COMPILER@"
+  "-DCMAKE_BUILD_TYPE=${TEST_CONFIG}" "-DCMAKE_PREFIX_PATH=@CMAKE_PREFIX_PATH@"
+  -DBUILD_TESTING=OFF -DLIGHTNING_USE_CONAN=OFF -DCMAKE_DISABLE_FIND_PACKAGE_GTest=ON
+  "-DFETCHCONTENT_SOURCE_DIR_CXXLOGGER=@cxxlogger_SOURCE_DIR@"
+  RESULT_VARIABLE result)
+if (NOT result EQUAL 0)
+  message (FATAL_ERROR "Library-only configuration failed")
+endif()
+checked ("@CMAKE_COMMAND@" --build "${test_root}/library-only"
+  --config "${TEST_CONFIG}" --parallel 2)
+checked ("@CMAKE_COMMAND@" --install "@CMAKE_CURRENT_BINARY_DIR@"
+  --config "${TEST_CONFIG}" --prefix "${test_root}/original")
+file (RENAME "${test_root}/original" "${test_root}/relocated")
+# The archive and exported usage requirements must survive prefix relocation.
+file (GLOB_RECURSE exports "${test_root}/relocated/*Targets*.cmake")
+foreach (export IN LISTS exports)
+  file (READ "${export}" contents)
+  foreach (forbidden "@PROJECT_SOURCE_DIR@" "@PROJECT_BINARY_DIR@")
+    string (FIND "${contents}" "${forbidden}" found)
+    if (NOT found EQUAL -1)
+      message (FATAL_ERROR "Export contains a build/source path: ${export}")
+    endif()
+  endforeach()
+endforeach()
+set (dependency_paths "@CMAKE_PREFIX_PATH@")
+list (PREPEND dependency_paths "${test_root}/relocated")
+# Quote the list directly in execute_process (not through the variadic helper).
+execute_process (COMMAND "@CMAKE_COMMAND@" -S "@PROJECT_SOURCE_DIR@/test/consumer"
+  -B "${test_root}/consumer" -G "@CMAKE_GENERATOR@"
+  "-DCMAKE_CXX_COMPILER=@CMAKE_CXX_COMPILER@"
+  "-DCMAKE_BUILD_TYPE=${TEST_CONFIG}" "-DCMAKE_PREFIX_PATH=${dependency_paths}"
+  RESULT_VARIABLE result)
+if (NOT result EQUAL 0)
+  message (FATAL_ERROR "Installed consumer configuration failed")
+endif()
+checked ("@CMAKE_COMMAND@" --build "${test_root}/consumer" --config "${TEST_CONFIG}")
+checked ("@CMAKE_CTEST_COMMAND@" --test-dir "${test_root}/consumer"
+  -C "${TEST_CONFIG}" --output-on-failure)

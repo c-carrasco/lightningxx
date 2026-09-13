@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include <lightning/http_header.h>
+#include <lightning/json.h>
 
 
 namespace lightning {
@@ -21,10 +22,13 @@ class HttpResponse {
 
     HttpResponse & status (uint32_t status) {
       _requireOpen();
+      if (status < 200 || status > 599)
+        throw std::invalid_argument ("A buffered response needs a final HTTP status (200-599)");
       _status = status;
       return *this;
     }
     HttpResponse & send (const std::string &data);
+    HttpResponse & json (const Json &value);
     HttpResponse & end();
     uint32_t status() const { return _status; }
     bool finished() const { return _finished; }

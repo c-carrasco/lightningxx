@@ -16,7 +16,7 @@ namespace lightning {
 // HTTP server construction and destruction
 // ----------------------------------------------------------------------------
 HttpServer::HttpServer (uint16_t port, size_t poolSize, LogLevel logLevel):
-  HttpServer { ServerOptions { port, "127.0.0.1", poolSize, logLevel }, std::make_shared<Dispatcher>() }
+  HttpServer { ServerOptions { port, "127.0.0.1", poolSize, logLevel, {} }, std::make_shared<Dispatcher>() }
 {
   // empty
 }
@@ -25,11 +25,15 @@ HttpServer::HttpServer (uint16_t port, size_t poolSize, LogLevel logLevel):
 // HTTP server construction and destruction
 // ----------------------------------------------------------------------------
 HttpServer::HttpServer (ServerOptions options, std::shared_ptr<Dispatcher> dispatcher):
-  _logger { options.logLevel }, _dispatcher { std::move (dispatcher) } {
+  _logger { options.logLevel }, _dispatcher { std::move (dispatcher) }, _transport { options.transport } {
   if (options.workers == 0)
     throw std::invalid_argument ("The HTTP server needs at least one worker");
   if (!_dispatcher)
     throw std::invalid_argument ("The HTTP server needs a dispatcher");
+  if (_transport.headerTimeout.count() < 0 || _transport.bodyTimeout.count() < 0 ||
+      _transport.writeTimeout.count() < 0 || _transport.keepAliveTimeout.count() < 0 ||
+      _transport.handlerTimeout.count() < 0)
+    throw std::invalid_argument ("Transport timeouts cannot be negative");
   _logger.transport (cxxlog::transport::OutputStream { std::cout });
   const asio::ip::tcp::endpoint endpoint { asio::ip::make_address (options.address), options.port };
   _acceptor.open (endpoint.protocol());
@@ -74,6 +78,11 @@ HttpServer::~HttpServer() {
   for (auto &weak : _connections)
     if (const auto connection = weak.lock())
       connection->close();
+  // Deliver terminal cancellation while the dispatcher and logger are alive.
+  // Operations that ignore cancellation are destroyed with the I/O context.
+  _ioService.restart();
+  _ioService.poll();
+  _ioService.stop();
 }
 
 // ----------------------------------------------------------------------------
@@ -102,9 +111,10 @@ void HttpServer::_acceptNext() {
       if (!ec) {
         const auto connection = std::make_shared<HttpConnection> (
           std::move (socket),
-          [this] (HttpRequest &request, HttpResponse &response) {
-            _dispatcher->dispatch (request, response);
-          }, _logger);
+          std::function<void (HttpRequest &, HttpResponse &)> {}, _logger, _transport,
+          [dispatcher = _dispatcher] (HttpRequest &request, HttpResponse &response) {
+            return dispatcher->dispatchAsync (request, response);
+          });
         _connections.erase (std::remove_if (_connections.begin(), _connections.end(),
           [] (const auto &weak) { return weak.expired(); }), _connections.end());
         _connections.push_back (connection);

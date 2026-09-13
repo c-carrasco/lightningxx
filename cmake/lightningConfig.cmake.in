@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+include (CMakeFindDependencyMacro)
+find_dependency (Threads)
+find_dependency (asio 1.29.0 EXACT CONFIG)
+find_dependency (llhttp 9.1.3 EXACT CONFIG)
+find_dependency (fmt 10.0.0 EXACT CONFIG)
+find_dependency (nlohmann_json 3.11.3 EXACT CONFIG)
+include ("${CMAKE_CURRENT_LIST_DIR}/lightningTargets.cmake")
+check_required_components (lightning)

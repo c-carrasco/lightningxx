@@ -160,9 +160,10 @@ TEST_P (MiddlewareMethods, every_method_helper_accepts_middleware_and_a_terminal
     [] (const auto &, auto &res) { res.send ("matched"); });
   for (int i = 0; i < lightning::kNumHttpMethods; ++i) {
     const auto candidate = static_cast<HttpMethod> (i);
-    EXPECT_EQ (run (app, "/", candidate).status(), candidate == method ? 200 : 404);
+    const bool matched = candidate == method || (method == HttpMethod::kGet && candidate == HttpMethod::kHead);
+    EXPECT_EQ (run (app, "/", candidate).status(), matched ? 200 : candidate == HttpMethod::kOptions ? 204 : 404);
   }
-  EXPECT_EQ (calls, 1);
+  EXPECT_EQ (calls, method == HttpMethod::kGet ? 2 : 1);
 }
 
 INSTANTIATE_TEST_SUITE_P (AllMethods, MiddlewareMethods, ::testing::Values (
@@ -236,7 +237,7 @@ TEST (Middleware, validates_callbacks_and_prefixes_before_registration) {
   for (const auto prefix : { "", "api", "/api?q=1", "/api#part" })
     EXPECT_THROW (app.use (prefix, [] (auto &, auto &, auto next) { next(); }), std::invalid_argument);
   EXPECT_THROW (app.use (std::string_view ("/a\0b", 4), [] (auto &, auto &, auto next) { next(); }), std::invalid_argument);
-  EXPECT_THROW (app.use ({}), std::invalid_argument);
+  EXPECT_THROW (app.use (lightning::Middleware {}), std::invalid_argument);
   EXPECT_THROW (app.onError ({}), std::invalid_argument);
   EXPECT_THROW (app.get ("/", lightning::Middleware {}), std::invalid_argument);
   bool installed = false;

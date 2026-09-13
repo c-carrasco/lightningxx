@@ -1,0 +1,12 @@
+cmake_minimum_required (VERSION 3.20)
+project (lightning_consumer LANGUAGES CXX)
+find_package (lightning 0.1 CONFIG REQUIRED)
+find_package (lightning 0.1 CONFIG REQUIRED) # Repeat discovery must be harmless.
+if (TARGET GTest::gtest OR TARGET test_lightning)
+  message (FATAL_ERROR "The installed package must not depend on the test framework")
+endif()
+add_executable (consumer main.cxx)
+target_link_libraries (consumer PRIVATE lightning::lightning)
+enable_testing()
+add_test (NAME consumer COMMAND consumer)
+set_tests_properties (consumer PROPERTIES TIMEOUT 10)

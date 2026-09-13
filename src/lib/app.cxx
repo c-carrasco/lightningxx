@@ -38,6 +38,15 @@ App & App::use (std::string_view prefix, Middleware handler) {
   return *this;
 }
 
+App & App::use (const Router &router) {
+  return use ("/", router);
+}
+
+App & App::use (std::string_view prefix, const Router &router) {
+  _dispatcher->mount (prefix, router._dispatcher);
+  return *this;
+}
+
 App & App::onError (ErrorHandler handler) {
   _dispatcher->onError (std::move (handler));
   return *this;

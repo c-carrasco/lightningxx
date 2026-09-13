@@ -66,7 +66,7 @@ TEST (App, configuration_and_dispatch_do_not_start_transport) {
 using MethodHelper = App & (App::*) (std::string_view, RequestHandler);
 class AppMethods: public ::testing::TestWithParam<std::pair<HttpMethod, MethodHelper>> {};
 
-TEST_P (AppMethods, helper_registers_only_its_http_method) {
+TEST_P (AppMethods, helper_registers_its_method_with_head_and_options_defaults) {
   const auto [method, helper] = GetParam();
   App app;
   EXPECT_EQ (&(app.*helper) ("/resource", [] (const auto &, auto &res) {
@@ -75,7 +75,8 @@ TEST_P (AppMethods, helper_registers_only_its_http_method) {
   for (int i = 0; i < lightning::kNumHttpMethods; ++i) {
     const auto candidate = static_cast<HttpMethod> (i);
     const auto response = dispatch (app, candidate, "/resource");
-    EXPECT_EQ (body (response), candidate == method ? "matched" : "Not found");
+    const bool matched = candidate == method || (method == HttpMethod::kGet && candidate == HttpMethod::kHead);
+    EXPECT_EQ (body (response), matched ? "matched" : candidate == HttpMethod::kOptions ? "" : "Not found");
   }
 }
 

@@ -66,7 +66,8 @@ class Client {
     }
     Response read (bool head = false) {
       auto response = readHeaders();
-      const auto length = head ? 0 : std::stoul (response.headers.at ("content-length"));
+      const auto length = head || response.status == 204 || response.status == 304 ? 0 :
+        std::stoul (response.headers.at ("content-length"));
       const auto deadline = std::chrono::steady_clock::now() + 5s;
       while (pending.size() < length)
         readMore (deadline);
@@ -88,13 +89,13 @@ class Client {
     bool waitForClose() {
       const auto deadline = std::chrono::steady_clock::now() + 1s;
       do {
-        char data[1024];
+        char data[65536];
         std::error_code ec;
         const auto count = socket.read_some (asio::buffer (data), ec);
         if (ec == asio::error::eof || ec == asio::error::connection_reset) return true;
         if (ec && !wouldBlock (ec)) throw std::system_error (ec);
         pending.append (data, count);
-        std::this_thread::sleep_for (1ms);
+        if (!count) std::this_thread::sleep_for (1ms);
       } while (std::chrono::steady_clock::now() < deadline);
       return false;
     }

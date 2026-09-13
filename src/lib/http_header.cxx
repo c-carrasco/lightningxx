@@ -7,6 +7,7 @@
 #include <cctype>
 
 #include <lightning/http_header.h>
+#include "http_field_validation.h"
 
 
 namespace lightning {
@@ -44,6 +45,7 @@ std::optional<std::string_view> HttpHeader::get (std::string_view name) const {
 // HttpHeader::set
 // ----------------------------------------------------------------------------
 void HttpHeader::set (std::string_view name, std::string_view value) {
+  detail::validateField (name, value);
   std::string lower;
   lower.resize(name.size());
   std::transform (std::begin (name), std::end (name), std::begin (lower), [] (unsigned char c) {

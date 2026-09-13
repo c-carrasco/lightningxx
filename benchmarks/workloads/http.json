@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "protocol": "HTTP/1.1",
+  "tls": false,
+  "request_headers": {"Host": "localhost"},
+  "scenarios": {
+    "plaintext": {"method": "GET", "path": "/plaintext", "status": 200, "body": "Hello, World!", "routes": 1, "middleware": 0, "router_depth": 0},
+    "1k": {"method": "GET", "path": "/1k", "status": 200, "repeat": "x", "response_bytes": 1024, "routes": 1, "middleware": 0, "router_depth": 0},
+    "application": {"method": "GET", "path": "/api/users/99/42", "status": 200, "body": "Hello, World!", "routes": 100, "middleware": 5, "router_depth": 1},
+    "echo": {"method": "POST", "path": "/echo", "status": 200, "echo": true, "routes": 1, "middleware": 0, "router_depth": 0},
+    "async": {"method": "GET", "path": "/async", "status": 200, "body": "Hello, World!", "routes": 1, "middleware": 0, "router_depth": 0, "executor_posts": 1}
+  }
+}
