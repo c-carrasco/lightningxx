@@ -41,7 +41,7 @@ HttpResponse & HttpResponse::send (const std::string &data) {
 // ----------------------------------------------------------------------------
 // HttpResponse::data
 // ----------------------------------------------------------------------------
-std::string HttpResponse::data() const {
+std::string HttpResponse::data (bool omitBody) const {
   std::string res;
 
   res.append ("HTTP/1.1 ");
@@ -64,7 +64,8 @@ std::string HttpResponse::data() const {
   res.append ("server: lightning");
   res.append ("\r\n");
   res.append ("\r\n");
-  res.append (_data);
+  if (!omitBody)
+    res.append (_data);
 
   return res;
 }

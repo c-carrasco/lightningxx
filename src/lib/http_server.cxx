@@ -3,122 +3,103 @@
 //
 // Copyright (c) 2024 Carlos Carrasco
 // ----------------------------------------------------------------------------
+#include <algorithm>
 #include <iostream>
-
+#include <stdexcept>
 #include <lightning/http_connection.h>
 #include <lightning/http_server.h>
 
-
 namespace lightning {
 
-// ----------------------------------------------------------------------------
-// Constructor
-// ----------------------------------------------------------------------------
-HttpServer::HttpServer (uint16_t port, std::size_t poolSize, LogLevel logLevel): _logger { logLevel } {
+HttpServer::HttpServer (uint16_t port, size_t poolSize, LogLevel logLevel): _logger { logLevel } {
+  if (poolSize == 0)
+    throw std::invalid_argument ("The HTTP server needs at least one worker");
   _logger.transport (cxxlog::transport::OutputStream { std::cout });
-
-  asio::ip::tcp::endpoint ep { asio::ip::tcp::v4(), port };
-
-  ep.address (asio::ip::address::from_string ("127.0.0.1"));
-
-  _acceptor.open (ep.protocol());
-
+  const asio::ip::tcp::endpoint endpoint { asio::ip::address_v4::loopback(), port };
+  _acceptor.open (endpoint.protocol());
   _acceptor.set_option (asio::ip::tcp::acceptor::reuse_address (true));
-
-  _acceptor.bind (ep);
+  _acceptor.bind (endpoint);
   _acceptor.listen (asio::socket_base::max_connections);
-
+  _port = _acceptor.local_endpoint().port();
+  _logger.info ("Listening, port={}", _port);
   _acceptNext();
-
-  _asioPool.reserve (poolSize);
-  for (std::size_t i = 0; i < poolSize; ++i)
-    _asioPool.emplace_back ([ this ] { _ioService.run(); });
-
-  _logger.info ("Listening, port={}", port);
-}
-
-// ----------------------------------------------------------------------------
-// Destructor
-// ----------------------------------------------------------------------------
-HttpServer::~HttpServer () {
-  _ioService.post ([ & ] { _acceptor.close(); });
-
-  for (auto &t: _asioPool) {
-    t.join();
+  try {
+    _asioPool.reserve (poolSize);
+    for (size_t i = 0; i < poolSize; ++i)
+      _asioPool.emplace_back ([this] { _ioService.run(); });
+  }
+  catch (...) {
+    _ioService.stop();
+    for (auto &thread : _asioPool)
+      thread.join();
+    throw;
   }
 }
 
-// ----------------------------------------------------------------------------
-// HttpServer:addRoute
-// ----------------------------------------------------------------------------
+HttpServer::~HttpServer() {
+  // Stop dispatch before closing sockets so no worker can use them concurrently.
+  _ioService.stop();
+  for (auto &thread : _asioPool)
+    thread.join();
+  std::error_code ignored;
+  _acceptor.close (ignored);
+  for (auto &weak : _connections)
+    if (const auto connection = weak.lock())
+      connection->close();
+}
+
 void HttpServer::addRoute (HttpMethod method, std::string_view path, RequestHandler &&handler) {
-  const auto index { static_cast<decltype(_routes)::size_type> (method) };
-
-  _routes[index].push_back (Route { path, handler });
+  const auto index = static_cast<size_t> (method);
+  if (index >= _routes.size() || !handler)
+    throw std::invalid_argument ("Invalid HTTP method or empty route handler");
+  std::lock_guard<std::mutex> lock { _configMutex };
+  _routes[index].push_back (Route { std::string (path), std::move (handler) });
 }
 
+void HttpServer::setDefault (RequestHandler &&handler) {
+  std::lock_guard<std::mutex> lock { _configMutex };
+  _routeNotFound = std::move (handler);
+}
 
-
-// ----------------------------------------------------------------------------
-// HttpServer::_acceptNext
-// ----------------------------------------------------------------------------
-void HttpServer::_acceptNext () {
-  _acceptor.async_accept (
-    _socket,
-    [ this ] (const auto errCode) {
-      _logger.debug ("accepting {} ...", errCode.value());
-
-      if (_acceptor.is_open()) {
-        if (!errCode) {
-          _logger.debug ("creating connection ...");
-
-          const auto connection = std::make_shared<HttpConnection> (
-            std::move (_socket),
-            [ this ] (const HttpRequest &request, HttpResponse &response) {
-              _logger.debug ("handling connection ...");
-              if (const auto handler = _find (request); handler.has_value()) {
-                handler.value() (request, response);
-              }
-              else {
-                if (_routeNotFound == nullptr) {
-                  response.headers().set ("Content-Type", "text/plain; charset=utf-8");
-                  response.status (404).send ("Not found");
-                }
-                else {
-                  _routeNotFound (request, response);
-                }
-              }
-            },
-            _logger
-          );
-
-          if (connection)
-            connection->waitForHttpMessage();
-        }
-
-        this->_acceptNext();
+void HttpServer::_acceptNext() {
+  // Each connection gets its own strand; the acceptor has a separate strand.
+  _acceptor.async_accept (asio::make_strand (_ioService),
+    [this] (std::error_code ec, asio::ip::tcp::socket socket) {
+      if (!_acceptor.is_open())
+        return;
+      if (!ec) {
+        const auto connection = std::make_shared<HttpConnection> (
+          std::move (socket),
+          [this] (const HttpRequest &request, HttpResponse &response) {
+            if (const auto handler = _find (request))
+              (*handler) (request, response);
+            else
+              response.status (404).send ("Not found");
+          }, _logger);
+        _connections.erase (std::remove_if (_connections.begin(), _connections.end(),
+          [] (const auto &weak) { return weak.expired(); }), _connections.end());
+        _connections.push_back (connection);
+        connection->waitForHttpMessage();
       }
-    }
-  );
+      _acceptNext();
+    });
 }
 
-// ----------------------------------------------------------------------------
-// HttpServer::_find
-// ----------------------------------------------------------------------------
 std::optional<RequestHandler> HttpServer::_find (const HttpRequest &request) const {
-  const auto index { static_cast<decltype(_routes)::size_type> (request.method) };
-
-  _logger.debug ("searching {} ...", request.path);
-
-  // FIXME: replace vector by unordered_map
-  const auto it = std::find_if (_routes[index].begin(), _routes[index].end(), [ &request ] (const Route &r) {
-    return request.path.compare (r.path.data()) == 0;
-  });
-
-  if (it == _routes[index].end())
+  std::lock_guard<std::mutex> lock { _configMutex };
+  const auto index = static_cast<size_t> (request.method);
+  if (index >= _routes.size())
     return std::nullopt;
-
-  return { it->handler };
+  _logger.debug ("searching {} ...", request.path);
+  const auto &routes = _routes[index];
+  const auto found = std::find_if (routes.begin(), routes.end(), [&request] (const Route &route) {
+    return request.path == route.path;
+  });
+  if (found != routes.end())
+    return found->handler;
+  if (_routeNotFound)
+    return _routeNotFound;
+  return std::nullopt;
 }
 
 }

@@ -94,7 +94,7 @@ if (ENABLE_UBSAN)
   set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined -fno-sanitize-recover=all")
 endif ()
 
-if (HA_ENABLE_TSAN)
+if (ENABLE_TSAN)
   # Enable Thread Sanitizer
   set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=thread")
 endif()

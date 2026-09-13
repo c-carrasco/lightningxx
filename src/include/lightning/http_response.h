@@ -15,7 +15,7 @@ namespace lightning {
 
 class HttpResponse {
   public:
-    std::string data() const;
+    std::string data (bool omitBody = false) const;
 
     HttpResponse & status (uint32_t status) {
       _status = status;
@@ -26,7 +26,7 @@ class HttpResponse {
     HttpHeader & headers() { return _headers; }
 
   private:
-    uint32_t _status = 0;
+    uint32_t _status = 200;
     HttpHeader _headers;
     std::string _data;
 };

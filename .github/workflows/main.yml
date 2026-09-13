@@ -17,12 +17,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build Debug GCC 13 C++20
-        run: ./build.sh docker=gcc13 debug clean uban=on asan=on test
+        run: ./build.sh docker=gcc13 debug clean ubsan=on asan=on test
       - name: Build Release GCC 13 C++20
         run: ./build.sh docker=gcc13 release clean test doc
 
       - name: Build Debug Clang 17 C++20
-        run: ./build.sh docker=clang17 debug clean uban=on asan=on test
+        run: ./build.sh docker=clang17 debug clean ubsan=on asan=on test
       - name: Build Release Clang 17 C++20
         run: ./build.sh docker=clang17 release clean test doc
 
@@ -45,6 +45,6 @@ jobs:
           version: 1.63.0
 
       - name: Build Debug AppleClang C++20
-        run: ./build.sh debug clean uban=on asan=on test
+        run: ./build.sh debug clean ubsan=on asan=on test
       - name: Build Release AppleClang C++20
         run: ./build.sh release clean test

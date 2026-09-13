@@ -4,6 +4,7 @@
 // Copyright (c) 2024 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #include <algorithm>
+#include <cctype>
 
 #include <lightning/http_header.h>
 
@@ -49,8 +50,8 @@ void HttpHeader::set (std::string_view name, std::string_view value) {
     return std::tolower (c);
   });
 
-  _headers[lower] = std::move(value);
-  _last = _headers.find (lower);
+  _headers[lower] = std::string (value);
+  _lastName = std::move (lower);
 }
 
 }

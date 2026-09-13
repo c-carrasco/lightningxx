@@ -82,10 +82,39 @@ TEST (HttpHeader, test_iterator) {
   }
 
   header.set ("ccc", "ddd");
-  auto it = header.cbegin();
-  ASSERT_EQ (it->first, "ccc");
-  it = std::next(it);
-  ASSERT_EQ (it->first, "aa");
-  ASSERT_EQ (it->second, "bb");
-  ASSERT_EQ (std::next(it), header.cend());
+  size_t count = 0;
+  for (auto it = header.cbegin(); it != header.cend(); ++it) {
+    if (it->first == "aa")
+      EXPECT_EQ (it->second, "bb");
+    else {
+      EXPECT_EQ (it->first, "ccc");
+      EXPECT_EQ (it->second, "ddd");
+    }
+    ++count;
+  }
+  EXPECT_EQ (count, 2);
+}
+
+TEST (HttpHeader, owns_temporary_values) {
+  lightning::HttpHeader header;
+  header.set ("x-temporary", std::string (256, 'x'));
+  EXPECT_EQ (header.get ("X-TEMPORARY"), std::string (256, 'x'));
+  std::string value = "original";
+  header.set ("x-mutable", value);
+  value.assign ("modified");
+  EXPECT_EQ (header.get ("x-mutable"), "original");
+}
+
+TEST (HttpHeader, copy_owns_values_and_last_iterator) {
+  lightning::HttpHeader copy;
+  EXPECT_EQ (copy.last(), copy.end());
+  {
+    lightning::HttpHeader original;
+    original.set ("x-copy", std::string (256, 'x'));
+    copy = original;
+    copy.last()->second = "changed";
+    EXPECT_EQ (original.get ("x-copy"), std::string (256, 'x'));
+  }
+  EXPECT_EQ (copy.get ("x-copy"), "changed");
+  EXPECT_EQ (copy.last()->first, "x-copy");
 }

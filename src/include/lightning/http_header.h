@@ -24,8 +24,8 @@ class HttpHeader {
     //   std::string_view value;
     // };
 
-    using iterator = std::unordered_map<std::string, std::string_view>::iterator;
-    using const_iterator = std::unordered_map<std::string, std::string_view>::const_iterator;
+    using iterator = std::unordered_map<std::string, std::string>::iterator;
+    using const_iterator = std::unordered_map<std::string, std::string>::const_iterator;
 
     bool contains (std::string_view name) const;
 
@@ -41,7 +41,8 @@ class HttpHeader {
     inline const_iterator cbegin () const { return _headers.begin(); }
     inline const_iterator cend () const { return _headers.end(); }
 
-    inline iterator last() const { return _last; }
+    inline iterator last() { return _headers.find (_lastName); }
+    inline const_iterator last() const { return _headers.find (_lastName); }
 
     friend std::ostream & operator<< (std::ostream &os, const HttpHeader &obj) {
       for (const auto &kv: obj._headers)
@@ -51,8 +52,8 @@ class HttpHeader {
     }
 
   private:
-    std::unordered_map<std::string, std::string_view> _headers;
-    iterator _last;
+    std::unordered_map<std::string, std::string> _headers;
+    std::string _lastName;
 };
 
 }

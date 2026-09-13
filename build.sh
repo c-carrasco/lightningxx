@@ -34,6 +34,7 @@ help () {
   echo "  mold            use mold linker"
   echo "  asan=on         enable address sanitizer"
   echo "  ubsan=on        enable undefined behavior sanitizer"
+  echo "  tsan=on         enable thread sanitizer"
   echo "  test            run tests"
   echo "  docker          run build in docker with gcc13"
   echo "  docker=gcc13    run build in docker with gcc13"
@@ -81,6 +82,10 @@ for I in "$@"; do
 
   if [[ $I == "ubsan=on" || $I == "ubsan=off" ]]; then
     CMAKE_OPTIONS+=("-DENABLE_UBSAN:BOOL=${I#ubsan=}")
+  fi
+
+  if [[ $I == "tsan=on" || $I == "tsan=off" ]]; then
+    CMAKE_OPTIONS+=("-DENABLE_TSAN:BOOL=${I#tsan=}")
   fi
 
   if [[ $I == "test" || $I == "tests" ]]; then

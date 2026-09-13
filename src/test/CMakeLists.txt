@@ -10,3 +10,4 @@ target_link_libraries(${EXE_NAME}
 )
 
 add_test (NAME ${EXE_NAME} COMMAND $<TARGET_FILE:${EXE_NAME}>)
+set_tests_properties (${EXE_NAME} PROPERTIES TIMEOUT 60)

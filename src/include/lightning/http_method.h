@@ -11,6 +11,7 @@
 namespace lightning {
 
 enum class HttpMethod: int_fast8_t {
+  kUnknown = -1,
   kGet = 0,
   kHead = 1,
   kPost = 2,

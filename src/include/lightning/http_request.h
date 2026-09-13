@@ -34,14 +34,14 @@ class HttpRequest {
       // empty
     }
 
-    HttpMethod method;
+    HttpMethod method { HttpMethod::kUnknown };
     std::string path;
     std::string query;
     std::string url;
     struct {
       uint16_t major;
       uint16_t minor;
-    } version;
+    } version {};
     std::string host; // from headers (host)
     // uint16_t port;
     std::string ip;
@@ -52,9 +52,10 @@ class HttpRequest {
     //   std::map<std::string, std::string> query;
     //   std::map<std::string, std::string> body; // parsed
     // } params;
-    int32_t statusCode;
-    std::vector<const uint8_t *> body;
+    int32_t statusCode { 0 };
+    std::vector<uint8_t> body;
 
+    // Parse exactly one complete request. All parsed data is owned by this object.
     bool parse (std::string_view data);
 
     // void use (ParseHandler &&handler) { _parsers.push_back (handler); }

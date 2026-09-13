@@ -3,116 +3,119 @@
 //
 // Copyright (c) 2024 Carlos Carrasco
 // ----------------------------------------------------------------------------
-#include <sstream>
-#include <algorithm>
-#include <iterator>
-#include <string>
-
-#include <asio.hpp>
-
 #include <lightning/http_connection.h>
-
+#include "http_request_parser.h"
 
 namespace lightning {
 
-// ----------------------------------------------------------------------------
-// HttpConnection::waitForHttpMessage
-// ----------------------------------------------------------------------------
-void HttpConnection::waitForHttpMessage() {
-  if (_inputBuffer.length() != 0) {
-    // If pipeline requests were sent by client then the beginning (or even entire request) of it
-    // is in the buffer obtained from socket in previous read operation.
-    _consumeData (_inputBuffer.bytes(), _inputBuffer.length());
-  }
-  else {
-    // Next request (if any) must be obtained from socket
-    _consumeMessage();
-  }
+struct HttpConnection::RequestState {
+  explicit RequestState (const Logger &logger): request { std::cref (logger) }, parser { request } {}
+  HttpRequest request;
+  detail::HttpRequestParser parser;
+  bool started { false };
+};
+
+HttpConnection::HttpConnection (
+    asio::ip::tcp::socket &&socket,
+    std::function<void (HttpRequest &, HttpResponse &)> receivedRequest,
+    const Logger &logger):
+  _socket { std::move (socket) },
+  _onReceivedRequest { std::move (receivedRequest) },
+  _logger { logger },
+  _state { std::make_unique<RequestState> (logger) }
+{}
+
+HttpConnection::~HttpConnection() = default;
+
+void HttpConnection::close() {
+  std::error_code ignored;
+  _socket.close (ignored);
 }
 
-// ----------------------------------------------------------------------------
-// HttpConnection::_consumeMessage
-// ----------------------------------------------------------------------------
+void HttpConnection::waitForHttpMessage() {
+  if (_inputBuffer.length() != 0)
+    _consumeData (_inputBuffer.bytes(), _inputBuffer.length());
+  else
+    _consumeMessage();
+}
+
 void HttpConnection::_consumeMessage() {
-  _socket.async_read_some(
+  _socket.async_read_some (
     _inputBuffer.makeAsioBuffer(),
-    [ this, ctx = shared_from_this() ] (auto ec, std::size_t length) {
-      this->_afterRead (ec, length);
+    [ctx = shared_from_this()] (auto ec, size_t length) {
+      ctx->_afterRead (ec, length);
     }
   );
 }
 
-// ----------------------------------------------------------------------------
-// HttpConnection::_afterRead
-// ----------------------------------------------------------------------------
-void HttpConnection::_afterRead (const std::error_code &ec, std::size_t length) {
-  if (!ec) {
+void HttpConnection::_afterRead (const std::error_code &ec, size_t length) {
+  if (length != 0) {
     _inputBuffer.obtainedBytes (length);
     _consumeData (_inputBuffer.bytes(), length);
   }
-  else {
-    _socket.close();
-  }
-}
-
-// ----------------------------------------------------------------------------
-// HttpConnection::_consumeData
-// ----------------------------------------------------------------------------
-void HttpConnection::_consumeData (const char *data, std::size_t length) {
-  bool messageComplete = false;
-  const char *d = data;
-
-  // Assume "\r\n\r\n" - the end of message will never happened to be split in 2 read operations.
-  for (; d <= data + length - 4; ++d) {
-    if (d[0] == '\r' && d[1] == '\n' && d[2] == '\r' && d[3] == '\n') {
-      messageComplete = true;
-      break;
-    }
-  }
-
-  if (messageComplete) {
-    HttpRequest request { _logger };
+  else if (ec == asio::error::eof && _state->started) {
     HttpResponse response;
-
-    _inputBuffer.consumedBytes (d - data + 4);
-
-    request.parse (_inputBuffer.str());
-
-    request.ip = _socket.remote_endpoint().address().to_string();
-    request.protocol = ProtocolType::kHttp; // FIXME: support more protocols
-
-    _onReceivedRequest (request, response);
-
-    _writeResponseMessage (response);
+    response.status (400).send ("Bad request");
+    _writeResponseMessage (std::move (response), true);
   }
   else {
-    _inputBuffer.consumedBytes (length);
-    _consumeMessage();
+    close();
   }
 }
 
-// ----------------------------------------------------------------------------
-// HttpConnection::_writeResponseMessage
-// ----------------------------------------------------------------------------
-void HttpConnection::_writeResponseMessage (const HttpResponse &response) {
-  const std::string data { response.data() };
+void HttpConnection::_consumeData (const char *data, size_t length) {
+  try {
+    _state->started = true;
+    const auto result = _state->parser.consume ({ data, length });
+    _inputBuffer.consumedBytes (result.consumed);
+    if (result.status == detail::HttpRequestParser::Status::kInvalid) {
+      HttpResponse response;
+      response.status (400).send ("Bad request");
+      _writeResponseMessage (std::move (response), true);
+      return;
+    }
+    if (result.status == detail::HttpRequestParser::Status::kIncomplete) {
+      _consumeMessage();
+      return;
+    }
 
-  _logger.get().verbose ("sending response ...\n{}", data);
+    auto &request = _state->request;
+    std::error_code ec;
+    const auto endpoint = _socket.remote_endpoint (ec);
+    if (ec) {
+      close();
+      return;
+    }
+    request.ip = endpoint.address().to_string();
+    request.protocol = ProtocolType::kHttp;
+    HttpResponse response;
+    _onReceivedRequest (request, response);
+    _writeResponseMessage (std::move (response), !result.keepAlive, request.method == HttpMethod::kHead);
+  }
+  catch (...) {
+    // Discard any partially constructed application response.
+    HttpResponse response;
+    response.status (500).send ("Internal server error");
+    _writeResponseMessage (std::move (response), true, _state->request.method == HttpMethod::kHead);
+  }
+}
 
-  asio::async_write(
+void HttpConnection::_writeResponseMessage (HttpResponse response, bool closeAfter, bool omitBody) {
+  if (closeAfter)
+    response.headers().set ("connection", "close");
+  const auto data = std::make_shared<const std::string> (response.data (omitBody));
+  asio::async_write (
     _socket,
-    asio::buffer (data.data(), data.size()),
-    [ this, ctx = shared_from_this() ] (std::error_code ec, std::size_t) {
-      if (ec) {
-        if (ec != asio::error::operation_aborted)
-          _socket.close();
+    asio::buffer (*data),
+    [ctx = shared_from_this(), data, closeAfter] (std::error_code ec, size_t) {
+      if (ec || closeAfter) {
+        ctx->close();
+        return;
       }
-      else {
-        ctx->waitForHttpMessage();
-      }
+      ctx->_state = std::make_unique<RequestState> (ctx->_logger.get());
+      ctx->waitForHttpMessage();
     }
   );
 }
 
 }
-
