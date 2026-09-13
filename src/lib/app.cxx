@@ -29,9 +29,27 @@ App & App::setDefault (RequestHandler handler) {
   return *this;
 }
 
+App & App::use (Middleware handler) {
+  return use ("/", std::move (handler));
+}
+
+App & App::use (std::string_view prefix, Middleware handler) {
+  _dispatcher->use (prefix, std::move (handler));
+  return *this;
+}
+
+App & App::onError (ErrorHandler handler) {
+  _dispatcher->onError (std::move (handler));
+  return *this;
+}
+
 // ----------------------------------------------------------------------------
 // App request dispatching
 // ----------------------------------------------------------------------------
+void App::dispatch (HttpRequest &request, HttpResponse &response) const {
+  _dispatcher->dispatch (request, response);
+}
+
 void App::dispatch (const HttpRequest &request, HttpResponse &response) const {
   _dispatcher->dispatch (request, response);
 }

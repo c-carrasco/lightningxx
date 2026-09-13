@@ -10,7 +10,7 @@ Lightning++ is a lightweight, expressive, and flexible web framework for C++. De
 ## Features
 
 - **Expressive Routing**: Register exact method/path routes using `app.get()`, `app.post()`, and other method helpers.
-- **Middleware Support (planned)**: Application and router middleware for logging, parsing, and session management.
+- **Middleware Support**: Ordered application, path-prefix, and route middleware with request-local context and centralized error handling.
 - **Fast and Lightweight**: Optimized for speed and a low memory footprint to deliver high performance.
 - **Asynchronous Networking**: Nonblocking socket I/O with synchronous handlers running on configurable I/O workers.
 - **C++20 Library**: A compiled static library built with CMake and Conan.
@@ -62,7 +62,7 @@ explicit `HttpMethod` registration.
 
 Routes match the method and path exactly, in registration order. Query strings
 are separate from the path; case and trailing slashes are significant. Named
-parameters, wildcard routes, and middleware are planned. Register HEAD explicitly
+parameters, wildcard routes, and reusable routers are planned. Register HEAD explicitly
 at this stage. `setDefault()` installs a fallback; an empty handler restores 404.
 
 To build and run the [hello/echo example](examples/hello.cxx):
@@ -77,10 +77,93 @@ curl --data-binary 'hello' http://127.0.0.1:3000/echo
 ```
 
 Use `App::dispatch(request, response)` for application tests without opening a
-socket. It shares the `Dispatcher` used by `HttpServer`. Direct dispatch propagates
-handler exceptions to the caller; socket requests retain the 500 response and
-connection-close behavior described below. It does not perform HTTP parsing or
-wire-level HEAD body suppression.
+socket. It shares the `Dispatcher` and error handling used by `HttpServer`.
+Unhandled callback errors produce a finished 500 response with `shouldClose()`
+set to true. This replaces the earlier direct-dispatch behavior of propagating
+callback exceptions. It does not perform HTTP parsing or wire-level HEAD body
+suppression. Mutable requests retain middleware changes; const requests are copied.
+Always supply a fresh, unfinished response to dispatch.
+
+## Middleware and errors
+
+Middleware takes `(HttpRequest &, HttpResponse &, Next)`. Register it globally
+with `app.use(handler)`, at a path prefix with `app.use("/api", handler)`, or
+alongside a route's terminal handler:
+
+```cpp
+app.use ("/api", [] (auto &req, auto &res, lightning::Next next) {
+  req.locals["source"] = std::string ("example");
+  res.headers().set ("x-framework", "lightning");
+  next();
+});
+
+const lightning::Middleware requireBody = [] (auto &req, auto &, auto next) {
+  if (req.body.empty())
+    throw std::invalid_argument ("Body required");
+  next();
+};
+
+app.post ("/api/echo", requireBody, [] (const auto &req, auto &res) {
+  res.send (std::string (req.body.begin(), req.body.end()));
+});
+
+app.onError ([] (std::exception_ptr error, auto &, auto &res, auto next) {
+  try {
+    std::rethrow_exception (error);
+  }
+  catch (const std::invalid_argument &) {
+    res.status (400).send ("Body required");
+  }
+  catch (...) {
+    next (error);
+  }
+});
+```
+
+The complete [middleware example](examples/middleware.cxx) builds as
+`lightning_middleware` when `LIGHTNING_BUILD_EXAMPLES=ON`.
+
+Middleware and routes execute in registration order. `next()` synchronously runs
+the remaining chain, then returns so middleware can perform cleanup or logging.
+`use("/api", ...)` matches `/api` and `/api/...`, but not `/apiculture`. A trailing
+slash on the registered prefix is ignored. Prefix matching is case-sensitive,
+does not decode URLs, and does not strip the prefix from `req.path`.
+
+Three-argument callbacks must call `next()` or finish the response. Returning
+without either is a programming error and enters the error chain. `send()` and
+`end()` finish the body/status; sending again or changing status then throws
+`std::logic_error`. Headers can still be decorated while middleware unwinds,
+before the buffered response is serialized. Existing two-argument route/default
+handlers are terminal: returning finishes an empty response if needed. A route
+chain that calls through its last callback proceeds to later matching layers;
+exhausting all layers invokes the configured fallback or returns 404.
+
+`Next` is single-use, confined to its callback thread, and expires when that
+callback returns or throws. Copies share that state. Repeated, expired, and
+cross-thread calls throw `std::logic_error`; retained continuations cannot perform
+deferred work. Handlers are synchronous in this stage.
+
+`req.locals` stores per-request values as `std::any`; read them with
+`std::any_cast<T>(req.locals.at("key"))`. Parsed body bytes remain available in
+`req.body`. Parsing a new request clears locals. Callback objects are retained
+across requests, so synchronize shared captures when using multiple workers.
+Each dispatch snapshots registrations: callbacks added during a request affect
+subsequent requests, without a configuration lock being held around user code.
+
+`onError()` registers a separate, ordered error chain for exceptions and
+`next(std::exception_ptr)` from middleware, routes, or the default handler.
+Buffered response data is discarded before entering this chain; request locals
+remain available. Each error handler can send a response or forward with
+`next(error)`; `next()` forwards the current error. Error handling never resumes
+normal routing. Each error handler runs at most once per request, and exceptions
+from an error handler advance to the remaining handlers. Registration order
+relative to ordinary routes does not affect this separate error chain.
+
+Handled errors can keep the connection alive. Unhandled errors receive a generic
+500 and close the connection. A normal 404 does not enter the error chain; invalid
+HTTP parsing still receives 400 before application dispatch. Because responses
+are buffered, exceptions thrown after `send()` also discard that buffered output
+and enter error handling; only the final response is written to the socket.
 
 ## Documentation
 
@@ -160,7 +243,8 @@ pipelining internally.
 
 Route paths and response header values are copied, so temporary strings are
 safe to pass. Responses default to status 200. Invalid requests receive 400;
-exceptions from route or default handlers receive 500 and close that connection.
+unhandled callback errors receive 500 and close that connection. Use `onError()`
+to customize application error responses.
 
 Routes and the default handler can be changed while the server is running.
 Handlers run synchronously on I/O workers and can execute concurrently for

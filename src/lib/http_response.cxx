@@ -15,11 +15,19 @@ namespace lightning {
 // HttpResponse::send
 // ----------------------------------------------------------------------------
 HttpResponse & HttpResponse::send (const std::string &data) {
+  _requireOpen();
   if (!_headers.contains ("content-type"))
     _headers.set ("content-type", "text/plain; charset=utf-8");
 
   _data = data;
+  _finished = true;
 
+  return *this;
+}
+
+HttpResponse & HttpResponse::end() {
+  _requireOpen();
+  _finished = true;
   return *this;
 }
 

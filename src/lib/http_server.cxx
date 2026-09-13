@@ -102,7 +102,7 @@ void HttpServer::_acceptNext() {
       if (!ec) {
         const auto connection = std::make_shared<HttpConnection> (
           std::move (socket),
-          [this] (const HttpRequest &request, HttpResponse &response) {
+          [this] (HttpRequest &request, HttpResponse &response) {
             _dispatcher->dispatch (request, response);
           }, _logger);
         _connections.erase (std::remove_if (_connections.begin(), _connections.end(),

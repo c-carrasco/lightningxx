@@ -6,10 +6,12 @@
 #ifndef __LIGHTNING_HTTP_REQUEST_H__
 #define __LIGHTNING_HTTP_REQUEST_H__
 #include <cinttypes>
+#include <any>
 #include <functional>
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include <lightning/http_method.h>
 #include <lightning/http_header.h>
@@ -54,6 +56,8 @@ class HttpRequest {
     // } params;
     int32_t statusCode { 0 };
     std::vector<uint8_t> body;
+    // Per-request middleware context; values retain their C++ types via std::any.
+    std::unordered_map<std::string, std::any> locals;
 
     // Parse exactly one complete request. All parsed data is owned by this object.
     bool parse (std::string_view data);

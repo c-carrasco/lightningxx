@@ -26,36 +26,86 @@ class App {
 
     App & addRoute (HttpMethod method, std::string_view path, RequestHandler handler);
     App & setDefault (RequestHandler handler);
+    App & use (Middleware handler);
+    App & use (std::string_view prefix, Middleware handler);
+    // A separate ordered error chain handles failures from middleware, routes,
+    // and the fallback. next() forwards the same error; it never resumes routes.
+    App & onError (ErrorHandler handler);
+
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & addRoute (HttpMethod method, std::string_view path, First first, Rest... rest) {
+      _dispatcher->addRoute (method, path, std::vector<Middleware> {
+        detail::routeCallback (std::move (first)), detail::routeCallback (std::move (rest))... });
+      return *this;
+    }
 
     App & get (std::string_view path, RequestHandler handler) {
       return addRoute (HttpMethod::kGet, path, std::move (handler));
     }
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & get (std::string_view path, First first, Rest... rest) {
+      return addRoute (HttpMethod::kGet, path, std::move (first), std::move (rest)...);
+    }
     App & head (std::string_view path, RequestHandler handler) {
       return addRoute (HttpMethod::kHead, path, std::move (handler));
+    }
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & head (std::string_view path, First first, Rest... rest) {
+      return addRoute (HttpMethod::kHead, path, std::move (first), std::move (rest)...);
     }
     App & post (std::string_view path, RequestHandler handler) {
       return addRoute (HttpMethod::kPost, path, std::move (handler));
     }
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & post (std::string_view path, First first, Rest... rest) {
+      return addRoute (HttpMethod::kPost, path, std::move (first), std::move (rest)...);
+    }
     App & put (std::string_view path, RequestHandler handler) {
       return addRoute (HttpMethod::kPut, path, std::move (handler));
+    }
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & put (std::string_view path, First first, Rest... rest) {
+      return addRoute (HttpMethod::kPut, path, std::move (first), std::move (rest)...);
     }
     App & del (std::string_view path, RequestHandler handler) {
       return addRoute (HttpMethod::kDelete, path, std::move (handler));
     }
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & del (std::string_view path, First first, Rest... rest) {
+      return addRoute (HttpMethod::kDelete, path, std::move (first), std::move (rest)...);
+    }
     App & connect (std::string_view path, RequestHandler handler) {
       return addRoute (HttpMethod::kConnect, path, std::move (handler));
+    }
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & connect (std::string_view path, First first, Rest... rest) {
+      return addRoute (HttpMethod::kConnect, path, std::move (first), std::move (rest)...);
     }
     App & options (std::string_view path, RequestHandler handler) {
       return addRoute (HttpMethod::kOptions, path, std::move (handler));
     }
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & options (std::string_view path, First first, Rest... rest) {
+      return addRoute (HttpMethod::kOptions, path, std::move (first), std::move (rest)...);
+    }
     App & trace (std::string_view path, RequestHandler handler) {
       return addRoute (HttpMethod::kTrace, path, std::move (handler));
+    }
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & trace (std::string_view path, First first, Rest... rest) {
+      return addRoute (HttpMethod::kTrace, path, std::move (first), std::move (rest)...);
     }
     App & patch (std::string_view path, RequestHandler handler) {
       return addRoute (HttpMethod::kPatch, path, std::move (handler));
     }
+    template<detail::RouteCallback First, detail::RouteCallback... Rest>
+    App & patch (std::string_view path, First first, Rest... rest) {
+      return addRoute (HttpMethod::kPatch, path, std::move (first), std::move (rest)...);
+    }
 
-    // Dispatch without opening a socket. Handler exceptions propagate to the caller.
+    // Dispatch without a socket, using the same error handling as network requests.
+    void dispatch (HttpRequest &request, HttpResponse &response) const;
+    // Const requests are copied so middleware can populate request-local state.
     void dispatch (const HttpRequest &request, HttpResponse &response) const;
 
     // Start I/O workers and return after the socket is listening. A second start

@@ -80,11 +80,11 @@ TEST_P (AppMethods, helper_registers_only_its_http_method) {
 }
 
 INSTANTIATE_TEST_SUITE_P (AllMethods, AppMethods, ::testing::Values (
-  std::make_pair (HttpMethod::kGet, &App::get), std::make_pair (HttpMethod::kHead, &App::head),
-  std::make_pair (HttpMethod::kPost, &App::post), std::make_pair (HttpMethod::kPut, &App::put),
-  std::make_pair (HttpMethod::kDelete, &App::del), std::make_pair (HttpMethod::kConnect, &App::connect),
-  std::make_pair (HttpMethod::kOptions, &App::options), std::make_pair (HttpMethod::kTrace, &App::trace),
-  std::make_pair (HttpMethod::kPatch, &App::patch)));
+  std::make_pair (HttpMethod::kGet, static_cast<MethodHelper> (&App::get)), std::make_pair (HttpMethod::kHead, static_cast<MethodHelper> (&App::head)),
+  std::make_pair (HttpMethod::kPost, static_cast<MethodHelper> (&App::post)), std::make_pair (HttpMethod::kPut, static_cast<MethodHelper> (&App::put)),
+  std::make_pair (HttpMethod::kDelete, static_cast<MethodHelper> (&App::del)), std::make_pair (HttpMethod::kConnect, static_cast<MethodHelper> (&App::connect)),
+  std::make_pair (HttpMethod::kOptions, static_cast<MethodHelper> (&App::options)), std::make_pair (HttpMethod::kTrace, static_cast<MethodHelper> (&App::trace)),
+  std::make_pair (HttpMethod::kPatch, static_cast<MethodHelper> (&App::patch))));
 
 TEST (App, exact_routes_keep_registration_order_and_default_is_resettable) {
   App app;
@@ -137,7 +137,7 @@ TEST (App, rejects_invalid_registration_without_changing_existing_routes) {
   EXPECT_EQ (body (dispatch (app, HttpMethod::kUnknown, "/")), "Not found");
 }
 
-TEST (App, dispatch_propagates_exceptions_and_releases_configuration_lock) {
+TEST (App, dispatch_handles_exceptions_and_releases_configuration_lock) {
   App app;
   app.get ("/register", [&app] (const auto &, auto &res) {
     app.get ("/new", [] (const auto &, auto &next) { next.send ("new"); });
@@ -147,8 +147,8 @@ TEST (App, dispatch_propagates_exceptions_and_releases_configuration_lock) {
   app.get ("/throw", [] (const auto &, auto &) { throw 42; });
   EXPECT_EQ (body (dispatch (app, HttpMethod::kGet, "/register")), "registered");
   EXPECT_EQ (body (dispatch (app, HttpMethod::kGet, "/new")), "new");
-  EXPECT_THROW (dispatch (app, HttpMethod::kGet, "/throw"), int);
-  EXPECT_THROW (dispatch (app, HttpMethod::kGet, "/missing"), std::runtime_error);
+  EXPECT_EQ (dispatch (app, HttpMethod::kGet, "/throw").status(), 500);
+  EXPECT_EQ (dispatch (app, HttpMethod::kGet, "/missing").status(), 500);
 }
 
 TEST (App, dispatch_and_registration_can_run_concurrently) {

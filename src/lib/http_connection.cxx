@@ -64,9 +64,13 @@ void HttpConnection::_afterRead (const std::error_code &ec, size_t length) {
 }
 
 void HttpConnection::_consumeData (const char *data, size_t length) {
+  bool omitBody = false;
   try {
     _state->started = true;
     const auto result = _state->parser.consume ({ data, length });
+    // Middleware may rewrite the method for routing. Wire framing must still
+    // follow the method parsed from the client's original request.
+    omitBody = _state->request.method == HttpMethod::kHead;
     _inputBuffer.consumedBytes (result.consumed);
     if (result.status == detail::HttpRequestParser::Status::kInvalid) {
       HttpResponse response;
@@ -90,13 +94,14 @@ void HttpConnection::_consumeData (const char *data, size_t length) {
     request.protocol = ProtocolType::kHttp;
     HttpResponse response;
     _onReceivedRequest (request, response);
-    _writeResponseMessage (std::move (response), !result.keepAlive, request.method == HttpMethod::kHead);
+    const bool closeAfter = !result.keepAlive || response.shouldClose();
+    _writeResponseMessage (std::move (response), closeAfter, omitBody);
   }
   catch (...) {
     // Discard any partially constructed application response.
     HttpResponse response;
     response.status (500).send ("Internal server error");
-    _writeResponseMessage (std::move (response), true, _state->request.method == HttpMethod::kHead);
+    _writeResponseMessage (std::move (response), true, omitBody);
   }
 }
 
