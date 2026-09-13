@@ -7,6 +7,8 @@ project (
   LANGUAGES CXX
 )
 
+set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type options are: Debug, Release")
+
 include (cmake/configure_compiler.cmake)
 include (cmake/configure_version.cmake)
 include (cmake/conan.cmake)
@@ -16,13 +18,12 @@ set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type options are: Debug, Release")
-
 list (APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-find_package (asio REQUIRED)
-find_package (llhttp REQUIRED)
-find_package (GTest REQUIRED)
+find_package (asio CONFIG REQUIRED)
+find_package (llhttp CONFIG REQUIRED)
+find_package (GTest CONFIG REQUIRED)
+find_package (fmt CONFIG REQUIRED)
 
 find_program (CCACHE_PROGRAM ccache)
 
@@ -35,31 +36,18 @@ enable_testing()
 
 include (CTest)
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-  add_custom_target(CopyDataFolder ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/data ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data
-  )
-else()
-  add_custom_target(CopyDataFolder ALL
-    COMMAND rm -f ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data
-    COMMAND ln -s ${CMAKE_CURRENT_SOURCE_DIR}/data ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data
-  )
-endif()
-
 include(FetchContent)
 
 set (CXXLOG_BUILD_TESTS OFF CACHE INTERNAL "")
-set (CXXLOG_DOCUMENTATION OFF CACHE INTERNAL "")
-
-if (NOT SUPPORT_STD_FORMAT OR CMAKE_CXX_STANDARD LESS_EQUAL 17)
-  add_compile_definitions(CXXLOG_USE_FMT_LIBRARY)
-endif()
-
+# Use the logger's library target directly. Its top-level build runs a second,
+# Conan 1-only dependency install into our build directory.
 FetchContent_Declare(
     CxxLogger
     GIT_REPOSITORY https://github.com/c-carrasco/cxxlogger.git
-    GIT_TAG main
+    GIT_TAG 069fbfddd261b1e0c8fe555fe30e1aa71c167bdb
+    SOURCE_SUBDIR src
 )
 FetchContent_MakeAvailable(CxxLogger)
+target_compile_definitions (cxxlogger INTERFACE CXXLOG_USE_FMT_LIBRARY)
 
 add_subdirectory (src)

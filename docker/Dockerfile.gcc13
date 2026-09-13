@@ -1,4 +1,4 @@
-FROM ubuntu:23.10
+FROM ubuntu:24.04
 
 ARG DOCKER_USER=dev
 
@@ -15,11 +15,16 @@ RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100 \
   && update-alternatives --install /usr/bin/gcc-nm gcc-nm /usr/bin/gcc-nm-13 100 \
   && update-alternatives --install /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ranlib-13 100 \
   && update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-13 100
-RUN python3 -m pip install conan==1.63.0 --break-system-packages
+RUN apt-get install --yes --no-install-recommends python3-venv \
+  && python3 -m venv /opt/conan \
+  && /opt/conan/bin/pip install --no-cache-dir conan==1.63.0
+ENV PATH="/opt/conan/bin:${PATH}"
+# Limit memory use when compiling documentation tools in Docker Desktop.
+ARG DOXYGEN_JOBS=2
 RUN apt-get install --yes flex bison \
   && mkdir -p doxygen/build && cd doxygen \
   && wget -qO- https://github.com/doxygen/doxygen/releases/download/Release_1_10_0/doxygen-1.10.0.src.tar.gz | tar xvz --strip-components=1 \
-  && cd build && cmake -G "Unix Makefiles" .. && make -j$(nproc) && make install \
+  && cd build && cmake -G "Unix Makefiles" .. && make -j"${DOXYGEN_JOBS}" && make install \
   && apt-get purge -y bison flex && apt-get autoclean --yes \
   && cd ../.. && rm -rf doxygen
 

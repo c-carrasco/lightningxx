@@ -4,10 +4,7 @@ string (JSON VERSION_MAJOR GET ${VERSION_JSON_STRING} major)
 string (JSON VERSION_MINOR GET ${VERSION_JSON_STRING} minor)
 
 execute_process (
-  COMMAND git config --global --add safe.directory ${CMAKE_CURRENT_SOURCE_DIR}
-)
-execute_process (
-  COMMAND git rev-parse --short HEAD OUTPUT_VARIABLE VERSION_CHANGE
+  COMMAND git -c "safe.directory=${CMAKE_CURRENT_SOURCE_DIR}" rev-parse --short HEAD OUTPUT_VARIABLE VERSION_CHANGE
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   RESULT_VARIABLE EXIT_CODE
 )

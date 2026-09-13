@@ -29,7 +29,7 @@ TODO
 
 Before diving into `Lightning++`, make sure you have the following tools and dependencies set up:
 
-- Conan 1.x
+- Conan 1.63+ or Conan 2.x (recommended)
 - CMake 3.20 or higer
 - GCC +13, Clang +17 or AppleClang +15
 - GNU Make or ninja
@@ -45,6 +45,12 @@ For a streamlined development environment, Docker is your friend. It's highly re
 ## The Building Script
 
 Located in the root folder of the project, the build.sh file acts as the catalyst for your building endeavors.
+
+Run `./build.sh` for a debug build, or `./build.sh test` to build and run the tests.
+The first build downloads dependencies and creates a default Conan profile if one
+does not exist. An existing default profile is preserved. Dependency installation
+uses [CMakeDeps](https://docs.conan.io/2/reference/tools/cmake/cmakedeps.html), which
+supports the CMake package configuration files used by this project.
 
 **Usage Guide**
 ---------------

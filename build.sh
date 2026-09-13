@@ -1,10 +1,11 @@
 #!/bin/bash
 set -e
 
-ROOT_DIR=$(pwd)
+ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+cd "$ROOT_DIR"
 BUILD_TYPE=Debug
 GENERATOR="Unix Makefiles"
-CMAKE_OPTIONS=""
+CMAKE_OPTIONS=()
 RUN_TESTS=0
 RUN_DOCKER=0
 GEN_DOC=0
@@ -14,9 +15,9 @@ OPEN_IDE=0
 GENERATE_PROJECT=0
 
 if [[ $(uname -s) == "Darwin" ]]; then
-  NUM_CORES=$(sysctl -n hw.physicalcpu)
+  NUM_CORES=$(sysctl -n hw.physicalcpu 2>/dev/null || echo 1)
 elif [[ $(uname -s) == "Linux" ]]; then
-  NUM_CORES=$(nproc)
+  NUM_CORES=$(nproc 2>/dev/null || echo 1)
 else
   echo "ERROR: current system is not supported"
 
@@ -61,7 +62,7 @@ for I in "$@"; do
   fi
 
   if [[ $I == "verbose" ]]; then
-    CMAKE_OPTIONS+="-DCMAKE_VERBOSE_MAKEFILE:BOOL=ON "
+    CMAKE_OPTIONS+=("-DCMAKE_VERBOSE_MAKEFILE:BOOL=ON")
   fi
 
   if [[ $I == "ninja" ]]; then
@@ -69,20 +70,20 @@ for I in "$@"; do
   fi
 
   if [[ $I == "mold" && -x "$(command -v mold)" ]]; then
-    CMAKE_OPTIONS+="-DCMAKE_EXE_LINKER_FLAGS_INIT=-B/usr/local/libexec/mold  "
-    CMAKE_OPTIONS+="-DCMAKE_SHARED_LINKER_FLAGS_INIT=-B/usr/local/libexec/mold "
-    CMAKE_OPTIONS+="-DCMAKE_MODULE_LINKER_FLAGS_INIT=-B/usr/local/libexec/mold "
+    CMAKE_OPTIONS+=("-DCMAKE_EXE_LINKER_FLAGS_INIT=-B/usr/local/libexec/mold")
+    CMAKE_OPTIONS+=("-DCMAKE_SHARED_LINKER_FLAGS_INIT=-B/usr/local/libexec/mold")
+    CMAKE_OPTIONS+=("-DCMAKE_MODULE_LINKER_FLAGS_INIT=-B/usr/local/libexec/mold")
   fi
 
-  if [[ $I == "asan=on" ]]; then
-    CMAKE_OPTIONS+="-DENABLE_ASAN:BOOL=ON "
+  if [[ $I == "asan=on" || $I == "asan=off" ]]; then
+    CMAKE_OPTIONS+=("-DENABLE_ASAN:BOOL=${I#asan=}")
   fi
 
-  if [[ $I == "ubsan=on" ]]; then
-    CMAKE_OPTIONS+="-DENABLE_UBSAN:BOOL=ON "
+  if [[ $I == "ubsan=on" || $I == "ubsan=off" ]]; then
+    CMAKE_OPTIONS+=("-DENABLE_UBSAN:BOOL=${I#ubsan=}")
   fi
 
-  if [[ $I == "test" ]]; then
+  if [[ $I == "test" || $I == "tests" ]]; then
     RUN_TESTS=1
   fi
 
@@ -96,7 +97,7 @@ for I in "$@"; do
   fi
 
   if [[ $I =~ ^cxx[0-9]{2}$ ]]; then
-    CMAKE_OPTIONS+="-DCMAKE_CXX_STANDARD=${I:3:5} "
+    CMAKE_OPTIONS+=("-DCMAKE_CXX_STANDARD=${I:3:5}")
   fi
 
   if [[ $I == "doc" ]]; then
@@ -116,14 +117,14 @@ for I in "$@"; do
 
     APPLE_PLATFORM=${I:6:20}
 
-    CMAKE_OPTIONS+="-DCMAKE_TOOLCHAIN_FILE=$ROOT_DIR/cmake/ios.toolchain.cmake "
+    CMAKE_OPTIONS+=("-DCMAKE_TOOLCHAIN_FILE=$ROOT_DIR/cmake/ios.toolchain.cmake")
 
     if [[ $APPLE_PLATFORM == "ios" ]]; then
-      CMAKE_OPTIONS+="-DIOS=ON  -DDEPLOYMENT_TARGET=12.0 -DPLATFORM=OS64 "
+      CMAKE_OPTIONS+=("-DIOS=ON" "-DDEPLOYMENT_TARGET=12.0" "-DPLATFORM=OS64")
     elif [[ $APPLE_PLATFORM == "sim" ]]; then
-      CMAKE_OPTIONS+="-DIOS=ON  -DDEPLOYMENT_TARGET=12.0 -DPLATFORM=SIMULATORARM64 "
+      CMAKE_OPTIONS+=("-DIOS=ON" "-DDEPLOYMENT_TARGET=12.0" "-DPLATFORM=SIMULATORARM64")
     else
-      CMAKE_OPTIONS+="-DDEPLOYMENT_TARGET=13.3 -DPLATFORM=MAC_ARM64 "
+      CMAKE_OPTIONS+=("-DDEPLOYMENT_TARGET=13.3" "-DPLATFORM=MAC_ARM64")
     fi
   fi
 
@@ -137,7 +138,7 @@ if [[ -z $DEFAULT_BUILD_DIR ]]; then DEFAULT_BUILD_DIR=build; fi
 BUILD_DIR=$DEFAULT_BUILD_DIR/$(echo $BUILD_TYPE | tr '[:upper:]' '[:lower:]')
 
 if [[ $CLEAN -eq 1 ]]; then
-  rm -rf $BUILD_DIR
+  rm -rf "$BUILD_DIR"
 fi
 
 if [[ $RUN_DOCKER -eq 1 ]]; then
@@ -178,17 +179,13 @@ fi
 
 if [[ ! -d $BUILD_DIR ]]; then
   GENERATE_PROJECT=1
-  mkdir -p $BUILD_DIR
+  mkdir -p "$BUILD_DIR"
 fi
 
-CMAKE_OPTIONS+="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} "
-CMAKE_OPTIONS+="-DCMAKE_MODULE_PATH=$PWD/$BUILD_DIR "
+CMAKE_OPTIONS+=("-DCMAKE_BUILD_TYPE=${BUILD_TYPE}")
 
-pushd $BUILD_DIR
-  if [[ ! -f conaninfo.txt || $GENERATE_PROJECT -eq 1 ]]; then
-    # conan profile detect
-    cmake -G "${GENERATOR}" ${CMAKE_OPTIONS} $ROOT_DIR
-  fi
+pushd "$BUILD_DIR"
+  cmake -G "${GENERATOR}" "${CMAKE_OPTIONS[@]}" "$ROOT_DIR"
 
   if [[ $OPEN_IDE -eq 1 && $GENERATOR == "Xcode" ]]; then
     cmake --open .
@@ -199,7 +196,11 @@ pushd $BUILD_DIR
     CMAKE_TARGET="--target all"
   fi
 
-  cmake --build . --parallel $NUM_CORES $CMAKE_TARGET $([ $GEN_DOC -eq 1 ] && echo "documentation")
+  cmake --build . --config "$BUILD_TYPE" --parallel "$NUM_CORES" $CMAKE_TARGET
+
+  if [[ $GEN_DOC -eq 1 ]]; then
+    cmake --build . --config "$BUILD_TYPE" --target documentation
+  fi
 
   if [[ $RUN_TESTS -eq 1 ]]; then
     GTEST_COLOR=yes ctest --verbose -C $BUILD_TYPE
