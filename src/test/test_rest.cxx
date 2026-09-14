@@ -1,6 +1,6 @@
 // ----------------------------------------------------------------------------
 // MIT License
-// Copyright (c) 2026 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #include <atomic>
 #include <thread>
@@ -10,7 +10,9 @@
 #include "http_test_client.h"
 
 namespace {
+
 using namespace lightning;
+
 Logger logger { LogLevel::kFatal };
 
 std::string body (const HttpResponse &response) {
@@ -516,4 +518,5 @@ TEST (RestSockets, json_head_framing_and_next_request_are_preserved) {
   EXPECT_EQ (head.headers.at ("content-length"), "11");
   EXPECT_EQ (client.read().body, "null");
 }
+
 }

@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------------------
 // MIT License
 //
-// Copyright (c) 2026 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #ifndef LIGHTNING_DISPATCHER_H
 #define LIGHTNING_DISPATCHER_H

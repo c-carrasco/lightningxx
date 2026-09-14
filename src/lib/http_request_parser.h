@@ -9,11 +9,13 @@
 #include <llhttp.h>
 #include <lightning/http_request.h>
 
+
 namespace lightning::detail {
 
 class HttpRequestParser {
   public:
     enum class Status { kIncomplete, kComplete, kInvalid };
+
     struct Result {
       Status status;
       size_t consumed;
@@ -24,11 +26,14 @@ class HttpRequestParser {
     explicit HttpRequestParser (HttpRequest &request, RequestLimits limits = {});
     HttpRequestParser (const HttpRequestParser &) = delete;
     HttpRequestParser & operator= (const HttpRequestParser &) = delete;
+
     Result consume (std::string_view input);
+
     bool headersComplete() const { return _headersComplete; }
 
   private:
     static const llhttp_settings_t _settings;
+
     llhttp_t _parser {};
     HttpRequest &_request;
     RequestLimits _limits;

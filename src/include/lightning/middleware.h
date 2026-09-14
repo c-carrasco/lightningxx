@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------------------
 // MIT License
 //
-// Copyright (c) 2026 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #ifndef LIGHTNING_MIDDLEWARE_H
 #define LIGHTNING_MIDDLEWARE_H
@@ -16,7 +16,9 @@
 #include <lightning/http_request.h>
 #include <lightning/http_response.h>
 
+
 namespace lightning {
+
 namespace detail { class Dispatch; }
 
 // Synchronous, single-use continuation. Copies share the same invocation state.
@@ -39,6 +41,7 @@ using Middleware = std::function<void (HttpRequest &, HttpResponse &, Next)>;
 using ErrorHandler = std::function<void (std::exception_ptr, HttpRequest &, HttpResponse &, Next)>;
 
 namespace detail {
+
 // Adapts existing terminal handlers; returning without send() finishes an empty response.
 Middleware asMiddleware (RequestHandler handler);
 Middleware asMiddleware (Middleware handler);
@@ -67,7 +70,9 @@ Middleware routeCallback (Handler handler) {
   else
     return asMiddleware (RequestHandler { std::move (handler) });
 }
-}
 
-}
+} // namespace detail
+
+} // namespace lightning
+
 #endif

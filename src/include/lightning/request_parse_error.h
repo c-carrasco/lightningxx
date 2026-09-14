@@ -1,6 +1,6 @@
 // ----------------------------------------------------------------------------
 // MIT License
-// Copyright (c) 2026 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #ifndef LIGHTNING_REQUEST_PARSE_ERROR_H
 #define LIGHTNING_REQUEST_PARSE_ERROR_H

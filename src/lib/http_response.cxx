@@ -24,14 +24,21 @@ HttpResponse & HttpResponse::send (const std::string &data) {
   return *this;
 }
 
+// ----------------------------------------------------------------------------
+// HttpResponse::end
+// ----------------------------------------------------------------------------
 HttpResponse & HttpResponse::end() {
   _requireOpen();
   _finished = true;
   return *this;
 }
 
+// ----------------------------------------------------------------------------
+// HttpResponse::json
+// ----------------------------------------------------------------------------
 HttpResponse & HttpResponse::json (const Json &value) {
   _requireOpen();
+
   // Serialize before changing response state; invalid UTF-8 may throw.
   auto serialized = value.dump();
   _headers.set ("content-type", "application/json; charset=utf-8");

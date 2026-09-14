@@ -1,10 +1,15 @@
-// MIT License - Copyright (c) 2026 Carlos Carrasco
+// ----------------------------------------------------------------------------
+// MIT License
+//
+// Copyright (c) 2025 Carlos Carrasco
+// ----------------------------------------------------------------------------
 #ifndef LIGHTNING_TESTING_H
 #define LIGHTNING_TESTING_H
 #include <functional>
 #include <lightning/http_request.h>
 #include <lightning/http_response.h>
 #include <lightning/async.h>
+
 
 namespace lightning::testing {
 
@@ -30,13 +35,16 @@ class Client {
     // Invalid/incomplete/multiple HTTP messages or receive-limit failures throw
     // invalid_argument before dispatch. Application errors use the error chain.
     Response inject (std::string_view wire) const;
+
     // Content-Length is computed from body bytes. Custom framing is rejected;
     // use inject() for raw/chunked requests. Host defaults to localhost.
     Response request (HttpMethod method, std::string_view target,
       std::string_view body = {}, const HttpHeader &headers = {}) const;
+
     Response get (std::string_view target, const HttpHeader &headers = {}) const {
       return request (HttpMethod::kGet, target, {}, headers);
     }
+
     Response post (std::string_view target, std::string_view body,
       const HttpHeader &headers = {}) const {
       return request (HttpMethod::kPost, target, body, headers);
@@ -46,5 +54,7 @@ class Client {
     AsyncRequestHandler _dispatch;
     RequestLimits _limits;
 };
+
 }
+
 #endif

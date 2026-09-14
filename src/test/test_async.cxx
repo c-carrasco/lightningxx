@@ -1,13 +1,21 @@
-// MIT License - Copyright (c) 2026 Carlos Carrasco
+// ----------------------------------------------------------------------------
+// MIT License
+//
+// Copyright (c) 2025 Carlos Carrasco
+// ----------------------------------------------------------------------------
 #include <atomic>
 #include <future>
+
 #include <gtest/gtest.h>
+
 #include <lightning/app.h>
 #include <lightning/body_parser.h>
 #include <lightning/testing.h>
+
 #include "http_test_client.h"
 
 namespace {
+
 using namespace lightning;
 using namespace std::chrono_literals;
 

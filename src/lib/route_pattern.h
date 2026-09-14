@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------------------
 // MIT License
 //
-// Copyright (c) 2026 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #ifndef LIGHTNING_ROUTE_PATTERN_H
 #define LIGHTNING_ROUTE_PATTERN_H
@@ -20,6 +20,7 @@ class RoutePattern {
       size_t consumed;
       std::unordered_map<std::string, std::string> params;
     };
+
     RoutePattern (std::string_view path, bool prefix);
     std::optional<Match> match (std::string_view path) const;
 

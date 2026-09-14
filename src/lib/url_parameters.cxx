@@ -1,8 +1,9 @@
 // ----------------------------------------------------------------------------
 // MIT License
-// Copyright (c) 2026 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #include <lightning/url_parameters.h>
+
 
 namespace lightning {
 
@@ -33,6 +34,7 @@ std::string decode (std::string_view input) {
     }
     else result += input[i] == '+' ? ' ' : input[i];
   }
+
   return result;
 }
 
@@ -44,6 +46,7 @@ std::string decode (std::string_view input) {
 UrlParameters parseUrlEncoded (std::string_view input, UrlEncodedOptions options) {
   if (input.size() > options.limit)
     throw RequestParseError { RequestParseError::Code::kTooLarge };
+
   UrlParameters result;
   size_t count = 0;
   while (!input.empty()) {
@@ -52,15 +55,18 @@ UrlParameters parseUrlEncoded (std::string_view input, UrlEncodedOptions options
     if (!field.empty()) {
       if (count == options.parameterLimit)
         throw RequestParseError { RequestParseError::Code::kTooLarge };
+
       ++count;
       const auto equal = field.find ('=');
       auto name = decode (field.substr (0, equal));
       auto value = equal == std::string_view::npos ? std::string {} : decode (field.substr (equal + 1));
       result[std::move (name)].push_back (std::move (value));
     }
+
     if (end == std::string_view::npos) break;
     input.remove_prefix (end + 1);
   }
+
   return result;
 }
 

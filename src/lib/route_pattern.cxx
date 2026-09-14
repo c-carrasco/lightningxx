@@ -1,11 +1,12 @@
 // ----------------------------------------------------------------------------
 // MIT License
 //
-// Copyright (c) 2026 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #include <unordered_set>
 #include <lightning/route_error.h>
 #include "route_pattern.h"
+
 
 namespace lightning::detail {
 
@@ -42,7 +43,10 @@ std::string decode (std::string_view value) {
       c = static_cast<char> (hex (value[i + 1]) * 16 + hex (value[i + 2]));
       i += 2;
     }
-    if (c == '\0') throw RouteDecodeError {};
+
+    if (c == '\0')
+      throw RouteDecodeError {};
+
     decoded.push_back (c);
   }
   return decoded;
@@ -54,14 +58,27 @@ std::string decode (std::string_view value) {
 // Route pattern construction
 // ----------------------------------------------------------------------------
 RoutePattern::RoutePattern (std::string_view path, bool prefix): _prefix { prefix } {
-  if (!prefix && path == "*") { _asterisk = true; return; }
-  if (path.empty() || path.front() != '/' || path.find_first_of ("?#{}[]()") != std::string_view::npos ||
-      path.find ('\0') != std::string_view::npos)
+  if (!prefix && path == "*") {
+    _asterisk = true;
+    return;
+  }
+
+  if (
+    path.empty() ||
+    (path.front() != '/') ||
+    (path.find_first_of ("?#{}[]()") != std::string_view::npos) ||
+    (path.find ('\0') != std::string_view::npos)
+  ) {
     throw std::invalid_argument ("Route patterns must be absolute paths without queries or optional/regex syntax");
+  }
+
   if (prefix) {
-    while (path.size() > 1 && path.back() == '/') path.remove_suffix (1);
+    while (path.size() > 1 && path.back() == '/')
+      path.remove_suffix (1);
+
     if (path == "/") return;
   }
+
   std::unordered_set<std::string> names;
   size_t start = 1;
   while (start <= path.size()) {
@@ -69,25 +86,34 @@ RoutePattern::RoutePattern (std::string_view path, bool prefix): _prefix { prefi
     const auto end = slash == std::string_view::npos ? path.size() : slash;
     const auto part = path.substr (start, end - start);
     Segment segment { Kind::kLiteral, std::string (part) };
+
     if (!part.empty() && (part.front() == ':' || part.front() == '*')) {
       const auto name = part.substr (1);
       if (name.empty() || !nameStart (name.front()))
         throw std::invalid_argument ("Route parameters need an identifier name");
+
       for (const char c : name)
         if (!nameStart (c) && !(c >= '0' && c <= '9'))
           throw std::invalid_argument ("Route parameters must occupy an entire path segment");
+
       segment.kind = part.front() == ':' ? Kind::kParameter : Kind::kWildcard;
       segment.value = name;
+
       if (!names.insert (segment.value).second)
         throw std::invalid_argument ("Duplicate route parameter name");
+
       if (segment.kind == Kind::kWildcard && (prefix || slash != std::string_view::npos))
         throw std::invalid_argument ("Wildcards are supported only as the final segment of a route");
     }
     else if (part.find_first_of (":*") != std::string_view::npos) {
       throw std::invalid_argument ("Route parameters must occupy an entire path segment");
     }
+
     _segments.push_back (std::move (segment));
-    if (slash == std::string_view::npos) break;
+
+    if (slash == std::string_view::npos)
+      break;
+
     start = slash + 1;
   }
 }
@@ -98,8 +124,13 @@ RoutePattern::RoutePattern (std::string_view path, bool prefix): _prefix { prefi
 std::optional<RoutePattern::Match> RoutePattern::match (std::string_view path) const {
   if (_asterisk)
     return path == "*" ? std::optional<Match> { Match { 1, {} } } : std::nullopt;
-  if (_prefix && _segments.empty()) return Match { 0, {} };
-  if (path.empty() || path.front() != '/') return std::nullopt;
+
+  if (_prefix && _segments.empty())
+    return Match { 0, {} };
+
+  if (path.empty() || (path.front() != '/'))
+    return std::nullopt;
+
   // Match raw segments first. Decode only after the entire pattern matches, so
   // an unrelated route cannot reject a request because of one partial capture.
   std::vector<std::pair<std::string_view, std::string_view>> captures;
@@ -121,10 +152,15 @@ std::optional<RoutePattern::Match> RoutePattern::match (std::string_view path) c
     consumed = end;
     start = end + 1;
   }
-  if (!_prefix && consumed != path.size()) return std::nullopt;
+
+  if (!_prefix && consumed != path.size())
+    return std::nullopt;
+
   Match result { consumed, {} };
+
   for (const auto &[name, value] : captures)
     result.params.emplace (name, decode (value));
+
   return result;
 }
 

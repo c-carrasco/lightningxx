@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------------------
 // MIT License
 //
-// Copyright (c) 2026 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #ifndef LIGHTNING_HTTP_TEST_CLIENT_H
 #define LIGHTNING_HTTP_TEST_CLIENT_H
@@ -14,6 +14,7 @@
 #include <asio.hpp>
 
 namespace lightning::test {
+
 using namespace std::chrono_literals;
 
 struct Response {
@@ -119,4 +120,5 @@ class Client {
 };
 
 }
+
 #endif

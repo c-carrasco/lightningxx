@@ -10,6 +10,7 @@
 #include <lightning/http_connection.h>
 #include <lightning/http_server.h>
 
+
 namespace lightning {
 
 // ----------------------------------------------------------------------------
@@ -25,17 +26,30 @@ HttpServer::HttpServer (uint16_t port, size_t poolSize, LogLevel logLevel):
 // HTTP server construction and destruction
 // ----------------------------------------------------------------------------
 HttpServer::HttpServer (ServerOptions options, std::shared_ptr<Dispatcher> dispatcher):
-  _logger { options.logLevel }, _dispatcher { std::move (dispatcher) }, _transport { options.transport } {
+  _logger { options.logLevel },
+  _dispatcher { std::move (dispatcher) },
+  _transport { options.transport }
+{
   if (options.workers == 0)
     throw std::invalid_argument ("The HTTP server needs at least one worker");
+
   if (!_dispatcher)
     throw std::invalid_argument ("The HTTP server needs a dispatcher");
-  if (_transport.headerTimeout.count() < 0 || _transport.bodyTimeout.count() < 0 ||
-      _transport.writeTimeout.count() < 0 || _transport.keepAliveTimeout.count() < 0 ||
-      _transport.handlerTimeout.count() < 0)
+
+  if (
+    (_transport.headerTimeout.count() < 0) ||
+    (_transport.bodyTimeout.count() < 0) ||
+    (_transport.writeTimeout.count() < 0) ||
+    (_transport.keepAliveTimeout.count() < 0) ||
+    (_transport.handlerTimeout.count() < 0)
+  ) {
     throw std::invalid_argument ("Transport timeouts cannot be negative");
+  }
+
   _logger.transport (cxxlog::transport::OutputStream { std::cout });
+
   const asio::ip::tcp::endpoint endpoint { asio::ip::make_address (options.address), options.port };
+
   _acceptor.open (endpoint.protocol());
   _acceptor.set_option (asio::ip::tcp::acceptor::reuse_address (true));
   _acceptor.bind (endpoint);
@@ -43,6 +57,7 @@ HttpServer::HttpServer (ServerOptions options, std::shared_ptr<Dispatcher> dispa
   _port = _acceptor.local_endpoint().port();
   _logger.info ("Listening, port={}", _port);
   _acceptNext();
+
   // Preconfigured handlers may inspect App, whose startup lock is still held.
   // Do not dispatch any user code until every worker was successfully created:
   // otherwise a partial startup failure could deadlock while joining workers.
@@ -58,10 +73,13 @@ HttpServer::HttpServer (ServerOptions options, std::shared_ptr<Dispatcher> dispa
   catch (...) {
     _ioService.stop();
     ready->count_down();
+
     for (auto &thread : _asioPool)
       thread.join();
+
     throw;
   }
+
   ready->count_down();
 }
 
@@ -71,13 +89,17 @@ HttpServer::HttpServer (ServerOptions options, std::shared_ptr<Dispatcher> dispa
 HttpServer::~HttpServer() {
   // Stop dispatch before closing sockets so no worker can use them concurrently.
   _ioService.stop();
+
   for (auto &thread : _asioPool)
     thread.join();
+
   std::error_code ignored;
   _acceptor.close (ignored);
+
   for (auto &weak : _connections)
     if (const auto connection = weak.lock())
       connection->close();
+
   // Deliver terminal cancellation while the dispatcher and logger are alive.
   // Operations that ignore cancellation are destroyed with the I/O context.
   _ioService.restart();
@@ -108,18 +130,28 @@ void HttpServer::_acceptNext() {
     [this] (std::error_code ec, asio::ip::tcp::socket socket) {
       if (!_acceptor.is_open())
         return;
+
       if (!ec) {
         const auto connection = std::make_shared<HttpConnection> (
           std::move (socket),
-          std::function<void (HttpRequest &, HttpResponse &)> {}, _logger, _transport,
+          std::function<void (HttpRequest &, HttpResponse &)> {},
+          _logger,
+          _transport,
           [dispatcher = _dispatcher] (HttpRequest &request, HttpResponse &response) {
             return dispatcher->dispatchAsync (request, response);
-          });
-        _connections.erase (std::remove_if (_connections.begin(), _connections.end(),
-          [] (const auto &weak) { return weak.expired(); }), _connections.end());
+          }
+        );
+
+        _connections.erase (std::remove_if (
+          _connections.begin(),
+          _connections.end(),
+          [] (const auto &weak) { return weak.expired(); }),
+          _connections.end()
+        );
         _connections.push_back (connection);
         connection->waitForHttpMessage();
       }
+
       _acceptNext();
     });
 }

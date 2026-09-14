@@ -68,7 +68,7 @@ class HttpConnection: public std::enable_shared_from_this<HttpConnection> {
       AsyncRequestHandler asyncReceivedRequest = {}
     );
 
-    ~HttpConnection() = default;
+    ~HttpConnection();
 
     void waitForHttpMessage();
     // Call on the connection strand, or after the server's I/O workers stop.

@@ -1,40 +1,61 @@
 // ----------------------------------------------------------------------------
 // MIT License
 //
-// Copyright (c) 2024 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #include <lightning/http_connection.h>
 #include "http_request_parser.h"
 
+
 namespace lightning {
 
+// ----------------------------------------------------------------------------
+// HttpConnection request state
+// ----------------------------------------------------------------------------
 struct HttpConnection::RequestState {
-  explicit RequestState (const Logger &logger, RequestLimits limits): request { std::cref (logger) }, parser { request, limits } {}
+  explicit RequestState (const Logger &logger, RequestLimits limits):
+    request { std::cref (logger) },
+    parser { request, limits }
+  {
+    // empty
+  }
+
   HttpRequest request;
   detail::HttpRequestParser parser;
   bool started { false };
 };
 
 // ----------------------------------------------------------------------------
+// HttpConnection destructor
+// ----------------------------------------------------------------------------
+HttpConnection::~HttpConnection() = default;
+
+// ----------------------------------------------------------------------------
 // HttpConnection constructor
 // ----------------------------------------------------------------------------
 HttpConnection::HttpConnection (
-    asio::ip::tcp::socket &&socket,
-    std::function<void (HttpRequest &, HttpResponse &)> receivedRequest,
-    const Logger &logger, TransportOptions options, AsyncRequestHandler asyncReceivedRequest):
+  asio::ip::tcp::socket &&socket,
+  std::function<void (HttpRequest &, HttpResponse &)> receivedRequest,
+  const Logger &logger,
+  TransportOptions options,
+  AsyncRequestHandler asyncReceivedRequest
+):
   _socket { std::move (socket) },
   _timer { _socket.get_executor() }, _options { options },
   _onReceivedRequest { std::move (receivedRequest) },
   _onReceivedAsync { std::move (asyncReceivedRequest) },
   _logger { logger },
   _state { std::make_unique<RequestState> (logger, options.limits) }
-{}
+{
+  // empty
+}
 
 // ----------------------------------------------------------------------------
 // HttpConnection close
 // ----------------------------------------------------------------------------
 void HttpConnection::close() {
   if (_closed) return;
+
   _closed = true;
   _cancelDeadline();
   std::error_code ignored;
@@ -56,7 +77,9 @@ void HttpConnection::_cancelDeadline() {
 void HttpConnection::_deadline (Phase phase, std::chrono::milliseconds duration) {
   _phase = phase;
   _cancelDeadline();
+
   if (duration.count() == 0) return;
+
   _timer.expires_after (duration);
   _timer.async_wait ([ctx = shared_from_this(), generation = _timerGeneration] (std::error_code ec) {
     if (!ec && !ctx->_closed && generation == ctx->_timerGeneration) ctx->close();
@@ -102,6 +125,7 @@ void HttpConnection::_consumeMessage() {
 // ----------------------------------------------------------------------------
 void HttpConnection::_afterRead (const std::error_code &ec, size_t length) {
   if (_closed) return;
+
   if (length != 0) {
     _inputBuffer.obtainedBytes (length);
     _consumeData (_inputBuffer.bytes(), length);
@@ -139,6 +163,7 @@ void HttpConnection::_consumeData (const char *data, size_t length) {
         status == 431 ? "Request headers too large" : status == 417 ? "Expectation failed" :
         status == 505 ? "HTTP version not supported" : "Bad request");
       _writeResponseMessage (std::move (response), true, omitBody);
+
       return;
     }
 
@@ -146,6 +171,7 @@ void HttpConnection::_consumeData (const char *data, size_t length) {
       if (_state->parser.headersComplete() && _phase != Phase::kBody)
         _deadline (Phase::kBody, _options.bodyTimeout);
       _consumeMessage();
+
       return;
     }
 
@@ -155,6 +181,7 @@ void HttpConnection::_consumeData (const char *data, size_t length) {
     const auto endpoint = _socket.remote_endpoint (ec);
     if (ec) {
       close();
+
       return;
     }
 

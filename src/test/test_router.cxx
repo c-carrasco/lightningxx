@@ -1,15 +1,18 @@
 // ----------------------------------------------------------------------------
 // MIT License
 //
-// Copyright (c) 2026 Carlos Carrasco
+// Copyright (c) 2025 Carlos Carrasco
 // ----------------------------------------------------------------------------
 #include <atomic>
 #include <future>
+
 #include <gtest/gtest.h>
+
 #include <lightning/app.h>
 #include "http_test_client.h"
 
 namespace {
+
 using lightning::App;
 using lightning::Router;
 using lightning::HttpMethod;

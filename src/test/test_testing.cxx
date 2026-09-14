@@ -1,4 +1,8 @@
-// MIT License - Copyright (c) 2026 Carlos Carrasco
+// ----------------------------------------------------------------------------
+// MIT License
+//
+// Copyright (c) 2025 Carlos Carrasco
+// ----------------------------------------------------------------------------
 #include <gtest/gtest.h>
 #include <lightning/app.h>
 #include <lightning/body_parser.h>

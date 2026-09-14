@@ -6,7 +6,11 @@
 #define LIGHTNING_JSON_H
 #include <nlohmann/json.hpp>
 
+
 namespace lightning {
+
 using Json = nlohmann::json;
+
 }
+
 #endif
