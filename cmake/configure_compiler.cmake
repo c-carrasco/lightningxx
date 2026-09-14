@@ -17,9 +17,6 @@ if (CMAKE_COMPILER_IS_GNUCXX)
   # enable colors in gcc log output.
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
 
-  # code coverage.
-  set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
-
   if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13)
       option (SUPPORT_STD_FORMAT ON)
   endif()

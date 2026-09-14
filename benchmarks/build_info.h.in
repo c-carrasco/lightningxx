@@ -1,0 +1,15 @@
+// Generated benchmark build provenance. Reconfigure after changing the tree.
+#pragma once
+#include <lightning/json.h>
+namespace lightning::bench {
+inline constexpr bool timingEnabled = @BENCH_TIMING_ENABLED@;
+inline Json buildInfo() {
+  return { { "revision", "@BENCH_REVISION@" }, { "dirty_at_configure", @BENCH_DIRTY@ },
+    { "compiler", "@CMAKE_CXX_COMPILER_ID@ @CMAKE_CXX_COMPILER_VERSION@" },
+    { "build_type", "@CMAKE_BUILD_TYPE@" }, { "cxx_standard", "@CMAKE_CXX_STANDARD@" },
+    { "compile_flags", R"flags(@BENCH_FLAGS@)flags" },
+    { "compile_flags_scope", "Global/configuration flags; see compile_commands.json for target usage requirements" },
+    { "timing_eligible", timingEnabled },
+    { "dependencies", "asio/1.29.0 llhttp/9.1.3 fmt/10.0.0 nlohmann_json/3.11.3 google-benchmark/1.9.1" } };
+}
+}

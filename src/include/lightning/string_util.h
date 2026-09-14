@@ -19,6 +19,7 @@ class StringUtil {
     ///
     /// @param buffer Pointer to the float32_t array to be formatted
     /// @param len Number of elements in the array
+    /// @param precision Number of digits after the decimal point
     /// @param numStart Print the first "numStart" elements of the array
     /// @param numEnd Print the last "numEnd" elements of the array
     ///

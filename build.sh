@@ -6,7 +6,8 @@ cd "$ROOT_DIR"
 BUILD_TYPE=Debug
 GENERATOR="Unix Makefiles"
 # Sanitizers apply to this invocation, not to settings left in CMake's cache.
-CMAKE_OPTIONS=(-DENABLE_ASAN:BOOL=OFF -DENABLE_UBSAN:BOOL=OFF -DENABLE_TSAN:BOOL=OFF)
+CMAKE_OPTIONS=(-DENABLE_ASAN:BOOL=OFF -DENABLE_UBSAN:BOOL=OFF -DENABLE_TSAN:BOOL=OFF -DLIGHTNING_ENABLE_COVERAGE:BOOL=OFF)
+RUN_COVERAGE=0
 RUN_TESTS=0
 RUN_DOCKER=0
 GEN_DOC=0
@@ -14,6 +15,7 @@ COMPILER=gcc13
 CLEAN=0
 OPEN_IDE=0
 GENERATE_PROJECT=0
+BUILD_BENCHMARKS=0
 
 if [[ $(uname -s) == "Darwin" ]]; then
   NUM_CORES=$(sysctl -n hw.physicalcpu 2>/dev/null || echo 1)
@@ -37,6 +39,8 @@ help () {
   echo "  ubsan=on        enable undefined behavior sanitizer"
   echo "  tsan=on|off     enable or disable thread sanitizer (default: off)"
   echo "  test            run tests"
+  echo "  bench           build isolated Release benchmarks (then run bin/bench_lightning)"
+  echo "  coverage=on     run LLVM coverage with line/branch floors (Debug Clang)"
   echo "  docker          run build in docker with gcc13"
   echo "  docker=gcc13    run build in docker with gcc13"
   echo "  docker=clang17  run build in docker with clang17"
@@ -93,6 +97,15 @@ for I in "$@"; do
     RUN_TESTS=1
   fi
 
+  if [[ $I == "bench" ]]; then
+    BUILD_BENCHMARKS=1
+  fi
+
+  if [[ $I == "coverage=on" || $I == "coverage=off" ]]; then
+    CMAKE_OPTIONS+=("-DLIGHTNING_ENABLE_COVERAGE:BOOL=${I#coverage=}")
+    if [[ $I == "coverage=on" ]]; then RUN_COVERAGE=1; else RUN_COVERAGE=0; fi
+  fi
+
   if [[ $I =~ ^docker$|^docker=.*  ]]; then
     RUN_DOCKER=1
     DOCKER_VALUE=${I:7:15}
@@ -138,6 +151,18 @@ for I in "$@"; do
     help $0
   fi
 done
+
+if [[ $BUILD_BENCHMARKS -eq 1 ]]; then
+  BUILD_TYPE=Release
+  CMAKE_OPTIONS+=("-DLIGHTNING_BUILD_BENCHMARKS:BOOL=ON" "-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON")
+  if [[ -z $DEFAULT_BUILD_DIR ]]; then DEFAULT_BUILD_DIR=build/benchmarks; fi
+  for BENCH_OPTION in "${CMAKE_OPTIONS[@]}"; do
+    if [[ $BENCH_OPTION =~ (ENABLE_ASAN|ENABLE_UBSAN|ENABLE_TSAN|LIGHTNING_ENABLE_COVERAGE):BOOL=(on|ON) ]]; then
+      echo "ERROR: bench requires a separate uninstrumented Release build"
+      exit 1
+    fi
+  done
+fi
 
 if [[ -z $DEFAULT_BUILD_DIR ]]; then DEFAULT_BUILD_DIR=build; fi
 
@@ -211,5 +236,8 @@ pushd "$BUILD_DIR"
 
   if [[ $RUN_TESTS -eq 1 ]]; then
     GTEST_COLOR=yes ctest --verbose -C $BUILD_TYPE
+  fi
+  if [[ $RUN_COVERAGE -eq 1 ]]; then
+    cmake --build . --config "$BUILD_TYPE" --target coverage
   fi
 popd

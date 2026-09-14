@@ -2,3 +2,4 @@ build
 *.ignore
 .conan.*
 .ccache.*
+__pycache__/
